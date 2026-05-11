@@ -1,0 +1,143 @@
+import { NextRequest, NextResponse } from 'next/server'
+import Anthropic from '@anthropic-ai/sdk'
+
+export const runtime = 'edge'
+export const maxDuration = 60
+
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+export async function POST(req: NextRequest) {
+  try {
+    const { url, pageContent, fetchMethod } = await req.json()
+    if (!url) return NextResponse.json({ error: 'No URL' }, { status: 400 })
+
+    const fetchNote = fetchMethod === 'failed'
+      ? 'WARNING: Page could not be fetched. Base your analysis on domain knowledge, URL patterns, and common issues for this type of site. Be clear about what you are inferring vs. observing.'
+      : fetchMethod === 'direct'
+      ? 'Note: Page was fetched via direct HTML parsing. Some dynamic content may be missing.'
+      : 'Page content was fetched via a headless reader that renders JavaScript — this is the real content users see.'
+
+    const prompt = `You are a world-class CRO (Conversion Rate Optimization) strategist with 15+ years experience. You have personally audited thousands of websites and increased conversion rates for YC startups, Fortune 500 companies, and high-growth SaaS businesses.
+
+You are auditing: ${url}
+${fetchNote}
+
+REAL PAGE CONTENT (extracted from the live website):
+---
+${pageContent || 'No content could be fetched.'}
+---
+
+YOUR TASK: Read this page exactly like a human user would — scrolling from top to bottom. Identify each distinct section of the page (even without knowing official names — just describe what you see, e.g. "Opening hero", "Three-column features block", "Testimonial strip", "Pricing table", "Bottom CTA"). 
+
+For each section, evaluate it like a senior CRO consultant sitting next to the founder:
+- What does this section say and what is it trying to do?
+- Is it doing its job in the conversion funnel?
+- What specific copy, layout, or structural issues hurt conversion?
+- What would you tell the founder to change TODAY?
+
+CRO evaluation framework you use for every section:
+1. Clarity — can a cold visitor understand this in 3 seconds?
+2. Specificity — is the copy specific (numbers, names, outcomes) or vague (words like "powerful", "easy", "best")?
+3. Friction — what mental objections does this section create?
+4. Trust — does this section build or erode trust?
+5. Next step — does this section guide the visitor toward a conversion action?
+
+Return ONLY a valid JSON object. Absolutely no markdown fences, no text before or after, no comments.
+
+{
+  "scores": {
+    "conversion": <integer 0-100, honest — most sites score 35-65>,
+    "ux": <integer 0-100>,
+    "cta": <integer 0-100>,
+    "trust": <integer 0-100>,
+    "mobile": <integer 0-100>
+  },
+  "score_notes": {
+    "conversion": "<6-8 word honest verdict — quote specific thing if possible>",
+    "ux": "<6-8 word verdict>",
+    "cta": "<6-8 word verdict quoting actual CTA text found>",
+    "trust": "<6-8 word verdict>",
+    "mobile": "<6-8 word verdict>"
+  },
+  "sections": [
+    {
+      "name": "<human-readable section name you inferred, e.g. 'Opening hero block', 'Three-column feature grid', 'Social proof strip', 'Pricing cards'>",
+      "score": <integer 0-100>,
+      "what_we_found": "<2-3 sentences describing exactly what this section contains — quote actual copy where found. Tell the founder what a first-time visitor reads here.>",
+      "issues": [
+        {
+          "severity": "high|medium|low",
+          "what": "<specific problem — quote actual copy if possible>",
+          "why": "<exactly why this hurts conversion for this specific audience>",
+          "fix": "<expert fix — include example rewritten copy where relevant>"
+        }
+      ],
+      "copy_rewrite": {
+        "label": "<what this is, e.g. 'Hero headline', 'Primary CTA button', 'Value proposition'>",
+        "original": "<quote the actual text from the page>",
+        "improved": "<expert conversion-focused rewrite specific to their product and audience>"
+      }
+    }
+  ],
+  "overall_issues": [
+    {
+      "severity": "high|medium|low",
+      "title": "<site-wide issue title>",
+      "description": "<2 sentences with specific evidence from the page>",
+      "fix": "<expert fix with example>"
+    }
+  ],
+  "copy": {
+    "headline": { "original": "<quote real H1>", "improved": "<outcome-driven rewrite>" },
+    "subheadline": { "original": "<quote real subheadline>", "improved": "<benefit-led rewrite>" },
+    "cta": { "original": "<quote real primary CTA>", "improved": "<friction-reducing high-intent rewrite>" },
+    "benefits": { "original": "<quote real benefits section>", "improved": "<outcome-focused rewrite>" }
+  },
+  "recommendations": [
+    {
+      "icon": "<one of: chart|shield|cursor|star|users|zap|target|eye|lock|trending>",
+      "title": "<specific recommendation>",
+      "description": "<2 sentences, evidence-based, specific to what you found>",
+      "impact": "high|medium"
+    }
+  ],
+  "layout": [
+    {
+      "title": "<structural change>",
+      "description": "<why this matters for this specific site — reference something you found>"
+    }
+  ]
+}
+
+Requirements:
+- sections: identify 5-12 sections based on what you actually found in the content
+- Each section needs at least 1-2 issues with real fixes
+- overall_issues: 4-6 site-wide problems
+- recommendations: 6 items
+- layout: 5 items  
+- Quote real copy everywhere you can — this is what makes the audit valuable
+- If you couldn't fetch the page, say so in what_we_found and give general advice for this URL's industry
+- Be honest and direct. A score of 50-65 is normal. Do not inflate.`
+
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 8000,
+      messages: [{ role: 'user', content: prompt }],
+    })
+
+    const text = message.content[0].type === 'text' ? message.content[0].text : ''
+
+    // Clean and parse JSON
+    let clean = text.replace(/```json[\r\n]?/g, '').replace(/```[\r\n]?/g, '').trim()
+    const start = clean.indexOf('{')
+    const end = clean.lastIndexOf('}')
+    if (start !== -1 && end !== -1) clean = clean.slice(start, end + 1)
+
+    const result = JSON.parse(clean)
+    return NextResponse.json({ ok: true, result, fetchMethod })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Unknown error'
+    console.error('Audit error:', msg)
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
+}
