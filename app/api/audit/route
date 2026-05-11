@@ -8,116 +8,83 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 export async function POST(req: NextRequest) {
   try {
-    const { url, pageContent, fetchMethod } = await req.json()
+    const body = await req.json() as { url?: string; pageContent?: string; fetchMethod?: string }
+    const { url, pageContent, fetchMethod } = body
     if (!url) return NextResponse.json({ error: 'No URL' }, { status: 400 })
 
-    const fetchNote = fetchMethod === 'failed'
-      ? 'WARNING: Page could not be fetched. Base your analysis on domain knowledge, URL patterns, and common issues for this type of site. Be clear about what you are inferring vs. observing.'
-      : fetchMethod === 'direct'
-      ? 'Note: Page was fetched via direct HTML parsing. Some dynamic content may be missing.'
-      : 'Page content was fetched via a headless reader that renders JavaScript — this is the real content users see.'
+    // Custom rewrite mode
+    if (fetchMethod === 'custom' && pageContent?.startsWith('CUSTOM_REWRITE:')) {
+      const copyText = pageContent.replace('CUSTOM_REWRITE:\n', '')
+      const msg = await client.messages.create({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 600,
+        messages: [{
+          role: 'user',
+          content: `You are a world-class CRO copywriter. Rewrite this website copy to be outcome-focused, specific, and conversion-optimized for the site at ${url}. Return ONLY the rewritten copy, nothing else:\n\n${copyText}`,
+        }],
+      })
+      const text = msg.content[0].type === 'text' ? msg.content[0].text : ''
+      return NextResponse.json({
+        ok: true,
+        result: {
+          scores: { conversion: 0, ux: 0, cta: 0, trust: 0, mobile: 0 },
+          score_notes: { conversion: '', ux: '', cta: '', trust: '', mobile: '' },
+          sections: [],
+          overall_issues: [],
+          copy: {
+            headline: { original: '', improved: text },
+            subheadline: { original: '', improved: '' },
+            cta: { original: '', improved: '' },
+            benefits: { original: '', improved: '' },
+          },
+          recommendations: [],
+          layout: [],
+        },
+      })
+    }
 
-    const prompt = `You are a world-class CRO (Conversion Rate Optimization) strategist with 15+ years experience. You have personally audited thousands of websites and increased conversion rates for YC startups, Fortune 500 companies, and high-growth SaaS businesses.
+    const fetchNote = fetchMethod === 'failed'
+      ? 'WARNING: Page could not be fetched. Base your analysis on domain knowledge and URL patterns. Be clear about what you are inferring.'
+      : fetchMethod === 'jina' || fetchMethod === 'jina-public'
+      ? 'Page content was fetched via a headless browser reader that renders JavaScript — this is the real content users see.'
+      : 'Page was fetched via HTML parsing. Some dynamic content may be missing.'
+
+    const prompt = `You are a world-class CRO (Conversion Rate Optimization) strategist. You have personally audited thousands of websites for YC startups, Fortune 500 companies, and high-growth SaaS businesses.
 
 You are auditing: ${url}
 ${fetchNote}
 
-REAL PAGE CONTENT (extracted from the live website):
+REAL PAGE CONTENT extracted from the live website:
 ---
-${pageContent || 'No content could be fetched.'}
+${(pageContent || 'No content available.').slice(0, 10000)}
 ---
 
-YOUR TASK: Read this page exactly like a human user would — scrolling from top to bottom. Identify each distinct section of the page (even without knowing official names — just describe what you see, e.g. "Opening hero", "Three-column features block", "Testimonial strip", "Pricing table", "Bottom CTA"). 
+YOUR TASK: Read this page exactly like a human scrolling from top to bottom. Identify each distinct section you can see. Give each section a natural descriptive name based on what it contains (e.g. "Opening hero with headline", "Three-column features grid", "Customer logos strip", "Pricing table", "FAQ accordion", "Bottom CTA banner"). You do NOT need to know the official section names — just describe what you see.
 
-For each section, evaluate it like a senior CRO consultant sitting next to the founder:
-- What does this section say and what is it trying to do?
-- Is it doing its job in the conversion funnel?
-- What specific copy, layout, or structural issues hurt conversion?
-- What would you tell the founder to change TODAY?
+For EACH section, give a senior CRO consultant's honest assessment:
+1. What does this section say and what job is it doing in the funnel?
+2. Does it do that job well? What specific copy or structure issues hurt conversion?
+3. What exact change would you make today?
 
-CRO evaluation framework you use for every section:
-1. Clarity — can a cold visitor understand this in 3 seconds?
-2. Specificity — is the copy specific (numbers, names, outcomes) or vague (words like "powerful", "easy", "best")?
-3. Friction — what mental objections does this section create?
-4. Trust — does this section build or erode trust?
-5. Next step — does this section guide the visitor toward a conversion action?
+Evaluation criteria per section:
+- CLARITY: Can a cold visitor understand this in 3 seconds?
+- SPECIFICITY: Are there real numbers, names, outcomes — or vague buzzwords like "powerful", "easy", "best"?
+- FRICTION: What objections or confusion does this section create?
+- TRUST: Does this section build or erode credibility?
+- NEXT STEP: Does this guide toward a conversion action?
 
-Return ONLY a valid JSON object. Absolutely no markdown fences, no text before or after, no comments.
+Return ONLY a valid JSON object. No markdown, no code fences, no text before or after.
 
-{
-  "scores": {
-    "conversion": <integer 0-100, honest — most sites score 35-65>,
-    "ux": <integer 0-100>,
-    "cta": <integer 0-100>,
-    "trust": <integer 0-100>,
-    "mobile": <integer 0-100>
-  },
-  "score_notes": {
-    "conversion": "<6-8 word honest verdict — quote specific thing if possible>",
-    "ux": "<6-8 word verdict>",
-    "cta": "<6-8 word verdict quoting actual CTA text found>",
-    "trust": "<6-8 word verdict>",
-    "mobile": "<6-8 word verdict>"
-  },
-  "sections": [
-    {
-      "name": "<human-readable section name you inferred, e.g. 'Opening hero block', 'Three-column feature grid', 'Social proof strip', 'Pricing cards'>",
-      "score": <integer 0-100>,
-      "what_we_found": "<2-3 sentences describing exactly what this section contains — quote actual copy where found. Tell the founder what a first-time visitor reads here.>",
-      "issues": [
-        {
-          "severity": "high|medium|low",
-          "what": "<specific problem — quote actual copy if possible>",
-          "why": "<exactly why this hurts conversion for this specific audience>",
-          "fix": "<expert fix — include example rewritten copy where relevant>"
-        }
-      ],
-      "copy_rewrite": {
-        "label": "<what this is, e.g. 'Hero headline', 'Primary CTA button', 'Value proposition'>",
-        "original": "<quote the actual text from the page>",
-        "improved": "<expert conversion-focused rewrite specific to their product and audience>"
-      }
-    }
-  ],
-  "overall_issues": [
-    {
-      "severity": "high|medium|low",
-      "title": "<site-wide issue title>",
-      "description": "<2 sentences with specific evidence from the page>",
-      "fix": "<expert fix with example>"
-    }
-  ],
-  "copy": {
-    "headline": { "original": "<quote real H1>", "improved": "<outcome-driven rewrite>" },
-    "subheadline": { "original": "<quote real subheadline>", "improved": "<benefit-led rewrite>" },
-    "cta": { "original": "<quote real primary CTA>", "improved": "<friction-reducing high-intent rewrite>" },
-    "benefits": { "original": "<quote real benefits section>", "improved": "<outcome-focused rewrite>" }
-  },
-  "recommendations": [
-    {
-      "icon": "<one of: chart|shield|cursor|star|users|zap|target|eye|lock|trending>",
-      "title": "<specific recommendation>",
-      "description": "<2 sentences, evidence-based, specific to what you found>",
-      "impact": "high|medium"
-    }
-  ],
-  "layout": [
-    {
-      "title": "<structural change>",
-      "description": "<why this matters for this specific site — reference something you found>"
-    }
-  ]
-}
+{"scores":{"conversion":<0-100>,"ux":<0-100>,"cta":<0-100>,"trust":<0-100>,"mobile":<0-100>},"score_notes":{"conversion":"<6-8 word honest verdict>","ux":"<6-8 word verdict>","cta":"<6-8 word verdict that quotes real CTA text>","trust":"<6-8 word verdict>","mobile":"<6-8 word verdict>"},"sections":[{"name":"<natural descriptive name of what this section contains>","score":<0-100>,"what_we_found":"<2-3 sentences describing what a real user sees here — quote actual copy found>","issues":[{"severity":"high|medium|low","what":"<specific problem — quote real copy if possible>","why":"<why this hurts conversion for this specific audience>","fix":"<exact change to make — include example rewritten copy>"}],"copy_rewrite":{"label":"<what this copy is>","original":"<quote exact text>","improved":"<expert rewrite>"}}],"overall_issues":[{"severity":"high|medium|low","title":"<site-wide issue>","description":"<2 sentences with evidence>","fix":"<expert fix>"}],"copy":{"headline":{"original":"<quote real H1>","improved":"<outcome-driven rewrite>"},"subheadline":{"original":"<quote real subheadline>","improved":"<benefit-led rewrite>"},"cta":{"original":"<quote real primary CTA>","improved":"<high-intent rewrite with friction-reducer>"},"benefits":{"original":"<quote real benefits copy>","improved":"<outcome rewrite>"}},"recommendations":[{"icon":"<chart|shield|cursor|star|users|zap|target|eye|lock|trending>","title":"<specific rec>","description":"<2 sentences, evidence-based>","impact":"high|medium"}],"layout":[{"title":"<structural change>","description":"<why, with reference to what you found>"}]}
 
-Requirements:
-- sections: identify 5-12 sections based on what you actually found in the content
-- Each section needs at least 1-2 issues with real fixes
-- overall_issues: 4-6 site-wide problems
+Rules:
+- sections: 5-12 based on actual content found
+- Each section: at least 1-2 issues with real, specific fixes
+- overall_issues: 4-5 site-wide problems  
 - recommendations: 6 items
-- layout: 5 items  
-- Quote real copy everywhere you can — this is what makes the audit valuable
-- If you couldn't fetch the page, say so in what_we_found and give general advice for this URL's industry
-- Be honest and direct. A score of 50-65 is normal. Do not inflate.`
+- layout: 5 items
+- Quote real copy wherever found — this is the entire value of the audit
+- Honest scores: most sites are 40-68. Do not inflate.`
 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-5',
@@ -126,8 +93,6 @@ Requirements:
     })
 
     const text = message.content[0].type === 'text' ? message.content[0].text : ''
-
-    // Clean and parse JSON
     let clean = text.replace(/```json[\r\n]?/g, '').replace(/```[\r\n]?/g, '').trim()
     const start = clean.indexOf('{')
     const end = clean.lastIndexOf('}')
