@@ -29,7 +29,6 @@
 }
 
 html { scroll-behavior: smooth; }
-
 body {
   font-family: var(--f);
   background: var(--bg);
