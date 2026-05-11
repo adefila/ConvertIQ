@@ -1,9 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800;900&display=swap');
-
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --f: 'Geist', -apple-system, sans-serif;
+  --f: -apple-system, sans-serif;
   --bg: #F7F7F5;
   --bg2: #EFEFEC;
   --bg3: #E2E2DE;
@@ -29,6 +27,7 @@
 }
 
 html { scroll-behavior: smooth; }
+
 body {
   font-family: var(--f);
   background: var(--bg);
