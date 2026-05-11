@@ -1,0 +1,148 @@
+import { NextRequest, NextResponse } from 'next/server'
+
+export const runtime = 'edge'
+export const maxDuration = 30
+
+export async function POST(req: NextRequest) {
+  try {
+    const { url } = await req.json()
+    if (!url) return NextResponse.json({ error: 'No URL provided' }, { status: 400 })
+
+    let content = ''
+    let method = ''
+
+    // Strategy 1: Jina AI Reader — renders JS, returns clean markdown (best accuracy)
+    // Free tier: 200 req/day. Set JINA_API_KEY in env for higher limits.
+    if (process.env.JINA_API_KEY) {
+      try {
+        const jinaRes = await fetch('https://r.jina.ai/' + url, {
+          headers: {
+            'Authorization': 'Bearer ' + process.env.JINA_API_KEY,
+            'Accept': 'application/json',
+            'X-Return-Format': 'markdown',
+            'X-Timeout': '15',
+          },
+          signal: AbortSignal.timeout(20000),
+        })
+        if (jinaRes.ok) {
+          const jinaData = await jinaRes.json()
+          content = jinaData.data?.content || ''
+          method = 'jina'
+        }
+      } catch {}
+    }
+
+    // Strategy 2: Jina AI without API key (public, rate-limited but works)
+    if (!content) {
+      try {
+        const jinaRes = await fetch('https://r.jina.ai/' + url, {
+          headers: {
+            'Accept': 'text/plain',
+            'X-Timeout': '15',
+          },
+          signal: AbortSignal.timeout(20000),
+        })
+        if (jinaRes.ok) {
+          content = await jinaRes.text()
+          method = 'jina-public'
+        }
+      } catch {}
+    }
+
+    // Strategy 3: Direct fetch + HTML parsing (fallback for simple sites)
+    if (!content) {
+      try {
+        const directRes = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; ConvertIQ/1.0)',
+            'Accept': 'text/html,application/xhtml+xml',
+          },
+          signal: AbortSignal.timeout(12000),
+        })
+        if (directRes.ok) {
+          const html = await directRes.text()
+          content = extractTextFromHTML(html)
+          method = 'direct'
+        }
+      } catch {}
+    }
+
+    if (!content || content.length < 100) {
+      return NextResponse.json({
+        content: '',
+        method: 'failed',
+        error: 'Could not fetch page content. The site may block crawlers or require JavaScript rendering.',
+      })
+    }
+
+    // Trim to a sensible size for Claude
+    const trimmed = content.slice(0, 12000)
+
+    return NextResponse.json({ content: trimmed, method, length: content.length })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Unknown error'
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
+}
+
+function extractTextFromHTML(html: string): string {
+  // Remove scripts, styles, svg
+  let clean = html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<svg[\s\S]*?<\/svg>/gi, '')
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+
+  // Extract title
+  const titleMatch = clean.match(/<title[^>]*>([\s\S]*?)<\/title>/i)
+  const title = titleMatch ? titleMatch[1].trim() : ''
+
+  const metaMatch = clean.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i) ||
+                    clean.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i)
+  const meta = metaMatch ? metaMatch[1] : ''
+
+  // Extract headings with context
+  const headings: string[] = []
+  const hMatches = clean.matchAll(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi)
+  for (const m of hMatches) {
+    const text = m[2].replace(/<[^>]+>/g, '').replace(/\s+/g,' ').trim()
+    if (text) headings.push('H' + m[1] + ': ' + text)
+  }
+
+  // Extract button/link text
+  const btns: string[] = []
+  const btnMatches = clean.matchAll(/<(?:button|a)[^>]*>([\s\S]*?)<\/(?:button|a)>/gi)
+  for (const m of btnMatches) {
+    const text = m[1].replace(/<[^>]+>/g, '').replace(/\s+/g,' ').trim()
+    if (text && text.length > 1 && text.length < 80) btns.push(text)
+  }
+
+  // Extract paragraphs
+  const paras: string[] = []
+  const paraMatches = clean.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)
+  for (const m of paraMatches) {
+    const text = m[1].replace(/<[^>]+>/g, '').replace(/\s+/g,' ').trim()
+    if (text && text.length > 30) paras.push(text)
+  }
+
+  // Strip all remaining HTML tags
+  const bodyText = clean.replace(/<[^>]+>/g, ' ').replace(/\s+/g,' ').trim()
+
+  return [
+    'PAGE TITLE: ' + title,
+    'META DESCRIPTION: ' + meta,
+    '',
+    'HEADINGS:',
+    headings.slice(0,20).join('\n'),
+    '',
+    'BUTTONS & CTAs:',
+    btns.slice(0,25).join(' | '),
+    '',
+    'PARAGRAPHS:',
+    paras.slice(0,20).join('\n'),
+    '',
+    'FULL PAGE TEXT:',
+    bodyText.slice(0, 5000),
+  ].join('\n')
+}
