@@ -1,108 +1,65 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
 
 export const runtime = 'edge'
 export const maxDuration = 60
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as { url?: string; pageContent?: string; fetchMethod?: string }
-    const { url, pageContent, fetchMethod } = body
-    if (!url) return NextResponse.json({ error: 'No URL' }, { status: 400 })
+    const { url, pageContent } = body
 
-    // Custom rewrite mode
-    if (fetchMethod === 'custom' && pageContent?.startsWith('CUSTOM_REWRITE:')) {
-      const copyText = pageContent.replace('CUSTOM_REWRITE:\n', '')
-      const msg = await client.messages.create({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 600,
-        messages: [{
-          role: 'user',
-          content: `You are a world-class CRO copywriter. Rewrite this website copy to be outcome-focused, specific, and conversion-optimized for the site at ${url}. Return ONLY the rewritten copy, nothing else:\n\n${copyText}`,
-        }],
-      })
-      const text = msg.content[0].type === 'text' ? msg.content[0].text : ''
-      return NextResponse.json({
-        ok: true,
-        result: {
-          scores: { conversion: 0, ux: 0, cta: 0, trust: 0, mobile: 0 },
-          score_notes: { conversion: '', ux: '', cta: '', trust: '', mobile: '' },
-          sections: [],
-          overall_issues: [],
-          copy: {
-            headline: { original: '', improved: text },
-            subheadline: { original: '', improved: '' },
-            cta: { original: '', improved: '' },
-            benefits: { original: '', improved: '' },
-          },
-          recommendations: [],
-          layout: [],
-        },
-      })
+    if (!url) {
+      return NextResponse.json({ error: 'No URL provided' }, { status: 400 })
     }
 
-    const fetchNote = fetchMethod === 'failed'
-      ? 'WARNING: Page could not be fetched. Base your analysis on domain knowledge and URL patterns. Be clear about what you are inferring.'
-      : fetchMethod === 'jina' || fetchMethod === 'jina-public'
-      ? 'Page content was fetched via a headless browser reader that renders JavaScript — this is the real content users see.'
-      : 'Page was fetched via HTML parsing. Some dynamic content may be missing.'
+    const apiKey = process.env.ANTHROPIC_API_KEY
+    if (!apiKey) {
+      return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 })
+    }
 
-    const prompt = `You are a world-class CRO (Conversion Rate Optimization) strategist. You have personally audited thousands of websites for YC startups, Fortune 500 companies, and high-growth SaaS businesses.
+    const prompt = `You are a world-class CRO strategist. Audit this website: ${url}
 
-You are auditing: ${url}
-${fetchNote}
-
-REAL PAGE CONTENT extracted from the live website:
+Page content:
 ---
-${(pageContent || 'No content available.').slice(0, 10000)}
+${(pageContent || 'No content available.').slice(0, 8000)}
 ---
 
-YOUR TASK: Read this page exactly like a human scrolling from top to bottom. Identify each distinct section you can see. Give each section a natural descriptive name based on what it contains (e.g. "Opening hero with headline", "Three-column features grid", "Customer logos strip", "Pricing table", "FAQ accordion", "Bottom CTA banner"). You do NOT need to know the official section names — just describe what you see.
+Read top to bottom like a human. Name each section descriptively. Return ONLY raw JSON, no markdown, no code fences.
 
-For EACH section, give a senior CRO consultant's honest assessment:
-1. What does this section say and what job is it doing in the funnel?
-2. Does it do that job well? What specific copy or structure issues hurt conversion?
-3. What exact change would you make today?
+{"scores":{"conversion":54,"ux":71,"cta":43,"trust":61,"mobile":68},"score_notes":{"conversion":"Weak value prop","ux":"Decent but cluttered","cta":"Learn More too weak","trust":"No social proof above fold","mobile":"CTA below fold"},"sections":[{"name":"Hero Section","score":48,"what_we_found":"The headline is vague. CTA says Learn More.","issues":[{"severity":"high","what":"Headline lacks outcome clarity","why":"Visitors cannot understand the transformation in 3 seconds","fix":"Lead with a specific outcome e.g. Get 3x More Leads Without Changing Your Product"}],"copy_rewrite":{"label":"Hero Headline","original":"Welcome to our platform","improved":"Get 3x More Leads. Starting Today."}}],"overall_issues":[{"severity":"high","title":"No social proof above fold","description":"Cold visitors see zero trust signals in the first viewport.","fix":"Add a logo bar directly below the hero CTA"}],"copy":{"headline":{"original":"Welcome to our platform","improved":"Get Results Faster. Starting Today."},"subheadline":{"original":"We help businesses grow","improved":"Join 2,000 companies who cut onboarding time by 60%"},"cta":{"original":"Learn More","improved":"Start Free — No Credit Card"},"benefits":{"original":"Fast, easy, powerful","improved":"Ship in hours not weeks. Save 10hrs per week."}},"recommendations":[{"icon":"zap","title":"Add urgency to your CTA","description":"Current CTA has no urgency. Add a benefit and friction reducer below it.","impact":"high"},{"icon":"shield","title":"Add trust signals above fold","description":"No logos or reviews visible without scrolling. Cold traffic needs trust immediately.","impact":"high"},{"icon":"target","title":"Clarify your value proposition","description":"Visitors cannot articulate what you do after 5 seconds.","impact":"high"},{"icon":"users","title":"Add specific testimonials","description":"Generic praise does not convert. Add quotes with full names and specific results.","impact":"medium"},{"icon":"eye","title":"Reduce cognitive load","description":"Too many competing messages. One headline, one subheadline, one CTA.","impact":"medium"},{"icon":"trending","title":"Add a risk reverser","description":"Below CTA add: No credit card required, Cancel anytime, Free for 14 days.","impact":"medium"}],"layout":[{"title":"Move social proof to position 2","description":"Place a trusted-by logo row immediately after the hero."},{"title":"Add a CTA after every 2 sections","description":"Do not make visitors scroll back to convert."},{"title":"Left-align all body copy","description":"Centre-aligned body text reads poorly beyond 2 lines."},{"title":"Compress the hero section","description":"Reduce hero height so value is visible before scrolling."},{"title":"Add a sticky mobile CTA bar","description":"Pin primary CTA to the bottom on mobile."}]}`
 
-Evaluation criteria per section:
-- CLARITY: Can a cold visitor understand this in 3 seconds?
-- SPECIFICITY: Are there real numbers, names, outcomes — or vague buzzwords like "powerful", "easy", "best"?
-- FRICTION: What objections or confusion does this section create?
-- TRUST: Does this section build or erode credibility?
-- NEXT STEP: Does this guide toward a conversion action?
-
-Return ONLY a valid JSON object. No markdown, no code fences, no text before or after.
-
-{"scores":{"conversion":<0-100>,"ux":<0-100>,"cta":<0-100>,"trust":<0-100>,"mobile":<0-100>},"score_notes":{"conversion":"<6-8 word honest verdict>","ux":"<6-8 word verdict>","cta":"<6-8 word verdict that quotes real CTA text>","trust":"<6-8 word verdict>","mobile":"<6-8 word verdict>"},"sections":[{"name":"<natural descriptive name of what this section contains>","score":<0-100>,"what_we_found":"<2-3 sentences describing what a real user sees here — quote actual copy found>","issues":[{"severity":"high|medium|low","what":"<specific problem — quote real copy if possible>","why":"<why this hurts conversion for this specific audience>","fix":"<exact change to make — include example rewritten copy>"}],"copy_rewrite":{"label":"<what this copy is>","original":"<quote exact text>","improved":"<expert rewrite>"}}],"overall_issues":[{"severity":"high|medium|low","title":"<site-wide issue>","description":"<2 sentences with evidence>","fix":"<expert fix>"}],"copy":{"headline":{"original":"<quote real H1>","improved":"<outcome-driven rewrite>"},"subheadline":{"original":"<quote real subheadline>","improved":"<benefit-led rewrite>"},"cta":{"original":"<quote real primary CTA>","improved":"<high-intent rewrite with friction-reducer>"},"benefits":{"original":"<quote real benefits copy>","improved":"<outcome rewrite>"}},"recommendations":[{"icon":"<chart|shield|cursor|star|users|zap|target|eye|lock|trending>","title":"<specific rec>","description":"<2 sentences, evidence-based>","impact":"high|medium"}],"layout":[{"title":"<structural change>","description":"<why, with reference to what you found>"}]}
-
-Rules:
-- sections: 5-12 based on actual content found
-- Each section: at least 1-2 issues with real, specific fixes
-- overall_issues: 4-5 site-wide problems  
-- recommendations: 6 items
-- layout: 5 items
-- Quote real copy wherever found — this is the entire value of the audit
-- Honest scores: most sites are 40-68. Do not inflate.`
-
-    const message = await client.messages.create({
-      model: 'claude-sonnet-4-5',
-      max_tokens: 8000,
-      messages: [{ role: 'user', content: prompt }],
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 8000,
+        messages: [{ role: 'user', content: prompt }],
+      }),
     })
 
-    const text = message.content[0].type === 'text' ? message.content[0].text : ''
+    if (!response.ok) {
+      const errText = await response.text()
+      return NextResponse.json({ error: 'Anthropic API error ' + response.status + ': ' + errText }, { status: 500 })
+    }
+
+    const data = await response.json() as { content: Array<{ type: string; text: string }> }
+    const text = data.content?.[0]?.text || ''
+
     let clean = text.replace(/```json[\r\n]?/g, '').replace(/```[\r\n]?/g, '').trim()
     const start = clean.indexOf('{')
     const end = clean.lastIndexOf('}')
     if (start !== -1 && end !== -1) clean = clean.slice(start, end + 1)
 
     const result = JSON.parse(clean)
-    return NextResponse.json({ ok: true, result, fetchMethod })
+    return NextResponse.json({ ok: true, result })
+
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
-    console.error('Audit error:', msg)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
