@@ -1,138 +1,65 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 export const runtime = 'edge'
-export const maxDuration = 30
-
-interface JinaResponse {
-  data?: { content?: string }
-}
+export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as { url?: string }
-    const { url } = body
-    if (!url) return NextResponse.json({ error: 'No URL provided' }, { status: 400 })
+    const body = await req.json() as { url?: string; pageContent?: string; fetchMethod?: string }
+    const { url, pageContent } = body
 
-    let content = ''
-    let method = ''
-
-    // Strategy 1: Jina AI with API key (best — renders JS, structured markdown)
-    if (process.env.JINA_API_KEY) {
-      try {
-        const res = await fetch('https://r.jina.ai/' + url, {
-          headers: {
-            'Authorization': 'Bearer ' + process.env.JINA_API_KEY,
-            'Accept': 'application/json',
-            'X-Return-Format': 'markdown',
-            'X-Timeout': '15',
-          },
-          signal: AbortSignal.timeout(20000),
-        })
-        if (res.ok) {
-          const data = await res.json() as JinaResponse
-          content = data.data?.content ?? ''
-          method = 'jina'
-        }
-      } catch { /* fall through */ }
+    if (!url) {
+      return NextResponse.json({ error: 'No URL provided' }, { status: 400 })
     }
 
-    // Strategy 2: Jina AI public (no key, rate-limited, still renders JS)
-    if (!content) {
-      try {
-        const res = await fetch('https://r.jina.ai/' + url, {
-          headers: { 'Accept': 'text/plain', 'X-Timeout': '15' },
-          signal: AbortSignal.timeout(20000),
-        })
-        if (res.ok) {
-          content = await res.text()
-          method = 'jina-public'
-        }
-      } catch { /* fall through */ }
+    const apiKey = process.env.ANTHROPIC_API_KEY
+    if (!apiKey) {
+      return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 })
     }
 
-    // Strategy 3: Direct HTML fetch + parse (fallback)
-    if (!content) {
-      try {
-        const res = await fetch(url, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (compatible; ConvertIQ/1.0; +https://convertiq.app)',
-            'Accept': 'text/html,application/xhtml+xml',
-          },
-          signal: AbortSignal.timeout(12000),
-        })
-        if (res.ok) {
-          const html = await res.text()
-          content = extractFromHTML(html)
-          method = 'direct'
-        }
-      } catch { /* fall through */ }
+    const prompt = `You are a world-class CRO strategist. Audit this website: ${url}
+
+Page content:
+---
+${(pageContent || 'No content available.').slice(0, 8000)}
+---
+
+Read top to bottom like a human. Name each section descriptively. Return ONLY raw JSON, no markdown, no code fences.
+
+{"scores":{"conversion":54,"ux":71,"cta":43,"trust":61,"mobile":68},"score_notes":{"conversion":"Weak value prop","ux":"Decent but cluttered","cta":"Learn More too weak","trust":"No social proof above fold","mobile":"CTA below fold"},"sections":[{"name":"Hero Section","score":48,"what_we_found":"The headline is vague. CTA says Learn More.","issues":[{"severity":"high","what":"Headline lacks outcome clarity","why":"Visitors cannot understand the transformation in 3 seconds","fix":"Lead with a specific outcome e.g. Get 3x More Leads Without Changing Your Product"}],"copy_rewrite":{"label":"Hero Headline","original":"Welcome to our platform","improved":"Get 3x More Leads. Starting Today."}}],"overall_issues":[{"severity":"high","title":"No social proof above fold","description":"Cold visitors see zero trust signals in the first viewport.","fix":"Add a logo bar directly below the hero CTA"}],"copy":{"headline":{"original":"Welcome to our platform","improved":"Get Results Faster. Starting Today."},"subheadline":{"original":"We help businesses grow","improved":"Join 2,000 companies who cut onboarding time by 60%"},"cta":{"original":"Learn More","improved":"Start Free — No Credit Card"},"benefits":{"original":"Fast, easy, powerful","improved":"Ship in hours not weeks. Save 10hrs per week."}},"recommendations":[{"icon":"zap","title":"Add urgency to your CTA","description":"Current CTA has no urgency. Add a benefit and friction reducer below it.","impact":"high"},{"icon":"shield","title":"Add trust signals above fold","description":"No logos or reviews visible without scrolling. Cold traffic needs trust immediately.","impact":"high"},{"icon":"target","title":"Clarify your value proposition","description":"Visitors cannot articulate what you do after 5 seconds.","impact":"high"},{"icon":"users","title":"Add specific testimonials","description":"Generic praise does not convert. Add quotes with full names and specific results.","impact":"medium"},{"icon":"eye","title":"Reduce cognitive load","description":"Too many competing messages. One headline, one subheadline, one CTA.","impact":"medium"},{"icon":"trending","title":"Add a risk reverser","description":"Below CTA add: No credit card required, Cancel anytime, Free for 14 days.","impact":"medium"}],"layout":[{"title":"Move social proof to position 2","description":"Place a trusted-by logo row immediately after the hero."},{"title":"Add a CTA after every 2 sections","description":"Do not make visitors scroll back to convert."},{"title":"Left-align all body copy","description":"Centre-aligned body text reads poorly beyond 2 lines."},{"title":"Compress the hero section","description":"Reduce hero height so value is visible before scrolling."},{"title":"Add a sticky mobile CTA bar","description":"Pin primary CTA to the bottom on mobile."}]}`
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 8000,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    })
+
+    if (!response.ok) {
+      const errText = await response.text()
+      return NextResponse.json({ error: 'Anthropic API error ' + response.status + ': ' + errText }, { status: 500 })
     }
 
-    if (!content || content.length < 100) {
-      return NextResponse.json({
-        content: '',
-        method: 'failed',
-        error: 'Could not fetch this page. It may block crawlers or require JavaScript rendering.',
-      })
-    }
+    const data = await response.json() as { content: Array<{ type: string; text: string }> }
+    const text = data.content?.[0]?.text || ''
 
-    return NextResponse.json({ content: content.slice(0, 12000), method, length: content.length })
+    let clean = text.replace(/```json[\r\n]?/g, '').replace(/```[\r\n]?/g, '').trim()
+    const start = clean.indexOf('{')
+    const end = clean.lastIndexOf('}')
+    if (start !== -1 && end !== -1) clean = clean.slice(start, end + 1)
+
+    const result = JSON.parse(clean)
+    return NextResponse.json({ ok: true, result })
+
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
     return NextResponse.json({ error: msg }, { status: 500 })
   }
-}
-
-function extractFromHTML(html: string): string {
-  let clean = html
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[\s\S]*?<\/style>/gi, '')
-    .replace(/<svg[\s\S]*?<\/svg>/gi, '')
-    .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')
-    .replace(/<!--[\s\S]*?-->/g, '')
-
-  const titleMatch = clean.match(/<title[^>]*>([\s\S]*?)<\/title>/i)
-  const title = titleMatch ? titleMatch[1].trim() : ''
-
-  const metaMatch =
-    clean.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i) ||
-    clean.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i)
-  const meta = metaMatch ? metaMatch[1] : ''
-
-  const headings: string[] = []
-  for (const m of clean.matchAll(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi)) {
-    const text = m[2].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
-    if (text) headings.push(`H${m[1]}: ${text}`)
-  }
-
-  const btns: string[] = []
-  for (const m of clean.matchAll(/<(?:button|a)[^>]*>([\s\S]*?)<\/(?:button|a)>/gi)) {
-    const text = m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
-    if (text && text.length > 1 && text.length < 80) btns.push(text)
-  }
-
-  const paras: string[] = []
-  for (const m of clean.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)) {
-    const text = m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
-    if (text && text.length > 30) paras.push(text)
-  }
-
-  const bodyText = clean.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
-
-  return [
-    'PAGE TITLE: ' + title,
-    'META DESCRIPTION: ' + meta,
-    '',
-    'HEADINGS:',
-    headings.slice(0, 20).join('\n'),
-    '',
-    'BUTTONS & CTAs:',
-    btns.slice(0, 25).join(' | '),
-    '',
-    'PARAGRAPHS:',
-    paras.slice(0, 20).join('\n'),
-    '',
-    'FULL PAGE TEXT:',
-    bodyText.slice(0, 5000),
-  ].join('\n')
 }
