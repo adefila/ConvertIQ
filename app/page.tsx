@@ -29,7 +29,7 @@ interface LayoutItem { title: string; description: string }
 interface AuditScores { conversion: number; ux: number; cta: number; trust: number; mobile: number }
 interface AuditResult {
   scores: AuditScores
-  score_notes: AuditScores & Record<string, string>
+  score_notes: Record<string, string>
   sections: PageSection[]
   overall_issues: Issue[]
   copy: { headline: CopyPair; subheadline: CopyPair; cta: CopyPair; benefits: CopyPair }
@@ -47,6 +47,7 @@ interface SavedAudit {
 
 /* ── Storage ── */
 const TTL = 15 * 24 * 60 * 60 * 1000
+
 function loadAudits(): SavedAudit[] {
   try {
     const raw = localStorage.getItem('ciq_v5')
@@ -54,21 +55,24 @@ function loadAudits(): SavedAudit[] {
     return (JSON.parse(raw) as SavedAudit[]).filter(a => Date.now() - a.ts < TTL)
   } catch { return [] }
 }
+
 function saveAudit(entry: SavedAudit) {
   const list = loadAudits().filter(a => a.url !== entry.url)
   list.unshift(entry)
   try { localStorage.setItem('ciq_v5', JSON.stringify(list.slice(0, 20))) } catch {}
 }
+
 function daysLeft(ts: number) {
   return Math.max(0, Math.ceil((TTL - (Date.now() - ts)) / 86400000))
 }
+
 function scoreColor(v: number) {
   if (v >= 70) return 'var(--green)'
   if (v >= 50) return 'var(--amber)'
   return 'var(--red)'
 }
 
-/* ── Icon system ── */
+/* ── Icons ── */
 const ICON_PATHS: Record<string, string> = {
   chart:    'M22 12h-4l-3 9L9 3l-3 9H2',
   shield:   'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
@@ -181,7 +185,7 @@ function SectionCard({ section, defaultOpen }: { section: PageSection; defaultOp
   )
 }
 
-/* ── Score keys for mapping ── */
+/* ── Constants ── */
 const SCORE_KEYS: Array<[keyof AuditScores, string]> = [
   ['conversion', 'Conversion'],
   ['ux', 'UX Experience'],
@@ -205,10 +209,29 @@ const STEP_LABELS = [
 ]
 
 const PREVIEW_CARDS = [
-  { label: 'Conversion', val: 54, sub: 'Critical gaps', color: 'var(--red)',   pct: 54, ibg: 'var(--red-bg)',   ic: 'var(--red)',   icon: 'M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01' },
+  { label: 'Conversion', val: 54, sub: 'Critical gaps',  color: 'var(--red)',   pct: 54, ibg: 'var(--red-bg)',   ic: 'var(--red)',   icon: 'M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01' },
   { label: 'UX Score',    val: 78, sub: 'Good structure', color: 'var(--green)', pct: 78, ibg: 'var(--green-bg)', ic: 'var(--green)', icon: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' },
   { label: 'CTA Strength',val: 41, sub: 'Weak actions',   color: 'var(--amber)', pct: 41, ibg: 'var(--amber-bg)', ic: 'var(--amber)', icon: 'M15 10l5 5-5 5M4 4v7a4 4 0 004 4h12' },
 ]
+
+/* ── Normalize URL ── */
+function normalizeUrl(raw: string): string {
+  let url = raw.trim()
+  // Remove any existing protocol first
+  url = url.replace(/^https?:\/\//i, '')
+  // Add https://
+  url = 'https://' + url
+  return url
+}
+
+function isValidUrl(url: string): boolean {
+  try {
+    const u = new URL(url)
+    return u.hostname.length > 0 && u.hostname.includes('.')
+  } catch {
+    return false
+  }
+}
 
 /* ── Main page ── */
 export default function Page() {
@@ -235,9 +258,7 @@ export default function Page() {
     const tick = () => {
       setActiveStep(i)
       setProgress(progs[i])
-      if (i > 0) {
-        setStepsDone(prev => prev.map((v, idx) => idx < i ? true : v))
-      }
+      if (i > 0) setStepsDone(prev => prev.map((v, idx) => idx < i ? true : v))
       i++
       if (i < 4) setTimeout(tick, 2200 + Math.random() * 800)
       else onDone()
@@ -248,8 +269,12 @@ export default function Page() {
   const runAudit = async () => {
     const raw = urlVal.trim()
     if (!raw) { setError('Please enter a website URL.'); return }
-    const normalized = /^https?:\/\//i.test(raw) ? raw : 'https://' + raw
-    try { new URL(normalized) } catch { setError('Invalid URL — try https://yoursite.com'); return }
+
+    const normalized = normalizeUrl(raw)
+    if (!isValidUrl(normalized)) {
+      setError('Please enter a valid URL — e.g. apple.com or https://apple.com')
+      return
+    }
 
     setError('')
     const disp = normalized.replace(/^https?:\/\//, '').replace(/\/$/, '')
@@ -294,6 +319,7 @@ export default function Page() {
     })
 
     try {
+      // Step 1: Fetch real page content
       const fetchRes = await fetch('/api/fetch-page', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -302,6 +328,7 @@ export default function Page() {
       const fetchData = await fetchRes.json() as { content?: string; method?: string; error?: string }
       method = fetchData.method || 'unknown'
 
+      // Step 2: Run CRO audit
       const auditRes = await fetch('/api/audit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -342,7 +369,7 @@ export default function Page() {
       if (d.result?.copy?.headline?.improved) {
         setCustomOutput(d.result.copy.headline.improved)
       } else {
-        setCustomOutput('Paste your copy above and click Rewrite with AI.')
+        setCustomOutput('Could not rewrite. Try again.')
       }
     } catch {
       setCustomOutput('Something went wrong. Try again.')
@@ -358,7 +385,6 @@ export default function Page() {
     setShowHistory(false)
   }
 
-  /* ── Render ── */
   return (
     <div>
       {/* NAV */}
@@ -389,19 +415,22 @@ export default function Page() {
               We fetch your live page, read every section top to bottom, and give you expert-level conversion fixes — named by section, with real copy quoted and rewritten.
             </p>
             <div className={styles.criteriaRow}>
-              {(['Copy clarity', 'CTA strength', 'Trust signals', 'UX friction', 'Mobile UX', 'Conversion funnel'] as const).map(label => (
+              {['Copy clarity', 'CTA strength', 'Trust signals', 'UX friction', 'Mobile UX', 'Conversion funnel'].map(label => (
                 <span key={label} className={styles.critBadge}>{label}</span>
               ))}
             </div>
             <div className={styles.inputShell}>
               <input
                 className={styles.urlInput}
-                type="url"
-                placeholder="https://yourwebsite.com"
+                type="text"
+                placeholder="yourwebsite.com or https://yourwebsite.com"
                 value={urlVal}
                 onChange={e => setUrlVal(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') runAudit() }}
                 autoComplete="off"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
               />
               <button className={styles.btnPrimary} onClick={runAudit}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
@@ -457,7 +486,7 @@ export default function Page() {
               <div className={styles.resMeta}>
                 <div className={styles.urlPill}><div className={styles.pillDot} />{displayUrl}</div>
                 <span className={styles.resTime}>{auditTime}</span>
-                {fetchMethod && fetchMethod !== 'failed' && (
+                {fetchMethod && fetchMethod !== 'failed' && fetchMethod !== 'url-only' && (
                   <span className={styles.fetchBadge}>
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     Live page read
@@ -483,7 +512,7 @@ export default function Page() {
               {SCORE_KEYS.map(([k, l], i) => {
                 const v = Math.round(result.scores[k] as number)
                 const c = scoreColor(v)
-                const note = (result.score_notes as Record<string, string>)[k] ?? ''
+                const note = result.score_notes[k] ?? ''
                 return (
                   <div key={k} className={styles.sc} style={{ animationDelay: `${i * 0.05}s` }}>
                     <div className={styles.scLbl}>{l}</div>
