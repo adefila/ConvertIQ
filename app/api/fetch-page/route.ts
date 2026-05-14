@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-export const maxDuration = 30
+export const maxDuration = 10
 
 export async function POST(req: NextRequest) {
   let url = ''
@@ -15,14 +15,14 @@ export async function POST(req: NextRequest) {
     let content = ''
     let method = ''
 
-    // Strategy 1: Jina Reader — free, no key needed, renders JS
+    // Strategy 1: Jina Reader — free, no key, renders JS
     try {
       const jinaRes = await fetch(`https://r.jina.ai/${url}`, {
         headers: {
           'Accept': 'text/plain',
           'User-Agent': 'Mozilla/5.0 (compatible; ConvertIQ/1.0)',
         },
-        signal: AbortSignal.timeout(14000),
+        signal: AbortSignal.timeout(5000),
       })
       if (jinaRes.ok) {
         const text = await jinaRes.text()
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
           !trimmed.startsWith('<!DOCTYPE') &&
           !trimmed.startsWith('<html')
         ) {
-          content = text
+          content = trimmed
           method = 'jina'
         }
       }
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
       try {
         const aoRes = await fetch(
           `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-          { signal: AbortSignal.timeout(12000) }
+          { signal: AbortSignal.timeout(5000) }
         )
         if (aoRes.ok) {
           const data = await aoRes.json() as { contents?: string }
@@ -55,38 +55,15 @@ export async function POST(req: NextRequest) {
       } catch { /* fall through */ }
     }
 
-    // Strategy 3: corsproxy.io
-    if (!content) {
-      try {
-        const cpRes = await fetch(
-          `https://corsproxy.io/?${encodeURIComponent(url)}`,
-          {
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
-            },
-            signal: AbortSignal.timeout(12000),
-          }
-        )
-        if (cpRes.ok) {
-          const html = await cpRes.text()
-          if (html && html.length > 300 && html.includes('<')) {
-            content = extractFromHTML(html)
-            method = 'corsproxy'
-          }
-        }
-      } catch { /* fall through */ }
-    }
-
-    // Strategy 4: Direct fetch
+    // Strategy 3: Direct fetch
     if (!content) {
       try {
         const directRes = await fetch(url, {
           headers: {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9',
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,*/*;q=0.8',
           },
-          signal: AbortSignal.timeout(12000),
+          signal: AbortSignal.timeout(5000),
         })
         if (directRes.ok) {
           const html = await directRes.text()
@@ -98,17 +75,17 @@ export async function POST(req: NextRequest) {
       } catch { /* fall through */ }
     }
 
-    // Fallback: URL-only — Claude still audits based on domain knowledge
+    // Fallback — Claude audits from URL knowledge
     if (!content || content.length < 150) {
       return NextResponse.json({
-        content: `Website being audited: ${url}\n\nPage content could not be fetched (site may block crawlers or require JavaScript rendering).\n\nPlease analyze this website based on:\n1. The domain name and URL path structure\n2. What type of business or product this URL suggests\n3. Common CRO issues for this industry type\n4. Be transparent that you are inferring rather than reading actual live content`,
+        content: `Website: ${url}\n\nPage content could not be fetched. Analyze based on the domain name, URL path, and your knowledge of this type of business. Be transparent that you are inferring rather than reading live content.`,
         method: 'url-only',
         length: 0,
       })
     }
 
     return NextResponse.json({
-      content: content.slice(0, 12000),
+      content: content.slice(0, 6000),
       method,
       length: content.length,
     })
@@ -116,9 +93,8 @@ export async function POST(req: NextRequest) {
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
     console.error('[fetch-page]', msg)
-    // CRITICAL: always return valid JSON — never crash to HTML
     return NextResponse.json({
-      content: `URL: ${url}. Could not fetch page. Claude will analyze based on domain knowledge.`,
+      content: `URL: ${url}. Could not fetch. Claude will analyze from domain knowledge.`,
       method: 'error',
       error: msg,
     })
@@ -139,17 +115,12 @@ function extractFromHTML(html: string): string {
   const metaDesc =
     clean.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)/i)?.[1] ??
     clean.match(/<meta[^>]+content=["']([^"']{20,200})["'][^>]+name=["']description/i)?.[1] ??
-    clean.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)/i)?.[1] ??
-    ''
-
-  const ogTitle = clean.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)/i)?.[1] ?? ''
+    clean.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)/i)?.[1] ?? ''
 
   const headings: string[] = []
   for (const m of clean.matchAll(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi)) {
     const text = m[2].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
-    if (text && text.length > 2 && text.length < 200) {
-      headings.push(`H${m[1]}: ${text}`)
-    }
+    if (text && text.length > 2 && text.length < 200) headings.push(`H${m[1]}: ${text}`)
   }
 
   const btns: string[] = []
@@ -161,26 +132,17 @@ function extractFromHTML(html: string): string {
   const paras: string[] = []
   for (const m of clean.matchAll(/<(?:p|li)\b[^>]*>([\s\S]*?)<\/(?:p|li)>/gi)) {
     const text = m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
-    if (text && text.length > 25 && text.length < 600) paras.push(text)
+    if (text && text.length > 25 && text.length < 500) paras.push(text)
   }
 
   const bodyText = clean.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
 
   return [
-    `PAGE TITLE: ${title}`,
-    ogTitle && ogTitle !== title ? `OG TITLE: ${ogTitle}` : '',
-    `META DESCRIPTION: ${metaDesc}`,
-    '',
-    '=== HEADINGS ===',
-    headings.slice(0, 25).join('\n'),
-    '',
-    '=== BUTTONS & CTAs ===',
-    [...new Set(btns)].slice(0, 30).join(' | '),
-    '',
-    '=== TEXT CONTENT ===',
-    paras.slice(0, 25).join('\n'),
-    '',
-    '=== FULL PAGE TEXT ===',
-    bodyText.slice(0, 3500),
+    `TITLE: ${title}`,
+    `META: ${metaDesc}`,
+    'HEADINGS:', headings.slice(0, 20).join('\n'),
+    'CTAs:', [...new Set(btns)].slice(0, 25).join(' | '),
+    'PARAGRAPHS:', paras.slice(0, 15).join('\n'),
+    'BODY:', bodyText.slice(0, 2000),
   ].filter(Boolean).join('\n')
 }
