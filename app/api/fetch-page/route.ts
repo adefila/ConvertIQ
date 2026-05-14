@@ -15,11 +15,11 @@ export async function POST(req: NextRequest) {
     let content = ''
     let method = ''
 
-    // Try AllOrigins — fast and reliable for basic HTML sites
+    // Try AllOrigins — fast CORS proxy
     try {
       const res = await fetch(
         `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-        { signal: AbortSignal.timeout(3500) }
+        { signal: AbortSignal.timeout(3000) }
       )
       if (res.ok) {
         const data = await res.json() as { contents?: string }
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       }
     } catch { /* fall through */ }
 
-    // Try direct fetch as backup
+    // Try direct fetch
     if (!content) {
       try {
         const res = await fetch(url, {
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'text/html,*/*;q=0.8',
           },
-          signal: AbortSignal.timeout(3500),
+          signal: AbortSignal.timeout(3000),
         })
         if (res.ok) {
           const html = await res.text()
@@ -50,11 +50,10 @@ export async function POST(req: NextRequest) {
       } catch { /* fall through */ }
     }
 
-    // Always return something — Claude will use URL knowledge if no content
     return NextResponse.json({
       content: content.length > 150
-        ? content.slice(0, 5000)
-        : `Website: ${url}\nAnalyze based on the domain name and your knowledge of this business.`,
+        ? content.slice(0, 4000)
+        : `Website: ${url}. Analyze based on domain name and industry knowledge.`,
       method: content.length > 150 ? method : 'url-only',
       length: content.length,
     })
@@ -105,8 +104,8 @@ function extractFromHTML(html: string): string {
   return [
     `TITLE: ${title}`,
     `META: ${metaDesc}`,
-    'HEADINGS:', headings.slice(0, 15).join('\n'),
-    'CTAs:', [...new Set(btns)].slice(0, 20).join(' | '),
-    'PARAGRAPHS:', paras.slice(0, 12).join('\n'),
+    'HEADINGS:', headings.slice(0, 12).join('\n'),
+    'CTAs:', [...new Set(btns)].slice(0, 15).join(' | '),
+    'PARAGRAPHS:', paras.slice(0, 10).join('\n'),
   ].filter(Boolean).join('\n')
 }
