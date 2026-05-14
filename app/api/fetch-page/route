@@ -1,63 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// NO edge runtime — Node.js for reliability
 export const maxDuration = 30
 
 export async function POST(req: NextRequest) {
+  let url = ''
   try {
     const body = await req.json() as { url?: string }
-    const { url } = body
-    if (!url) return NextResponse.json({ content: '', method: 'error', error: 'No URL' })
+    url = body.url ?? ''
+    if (!url) {
+      return NextResponse.json({ content: `No URL provided`, method: 'error' })
+    }
 
     let content = ''
     let method = ''
 
-    // Strategy 1: Firecrawl free tier — best JS rendering, no key needed for basic use
+    // ── Strategy 1: Jina Reader (free, no key, renders JS) ──
     try {
-      const res = await fetch('https://api.firecrawl.dev/v1/scrape', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, formats: ['markdown'], onlyMainContent: true }),
-        signal: AbortSignal.timeout(12000),
+      const res = await fetch(`https://r.jina.ai/${url}`, {
+        headers: {
+          'Accept': 'text/plain',
+          'User-Agent': 'Mozilla/5.0 (compatible; ConvertIQ/1.0)',
+        },
+        signal: AbortSignal.timeout(14000),
       })
       if (res.ok) {
-        const data = await res.json() as { success?: boolean; data?: { markdown?: string } }
-        if (data.success && data.data?.markdown && data.data.markdown.length > 200) {
-          content = data.data.markdown
-          method = 'firecrawl'
+        const text = await res.text()
+        // Jina returns HTML error pages sometimes — check it's real content
+        if (
+          text &&
+          text.length > 300 &&
+          !text.trimStart().startsWith('<!DOCTYPE') &&
+          !text.trimStart().startsWith('<html') &&
+          !text.includes('Error') ||
+          (text.length > 1000)
+        ) {
+          content = text
+          method = 'jina'
         }
       }
     } catch { /* fall through */ }
 
-    // Strategy 2: Jina Reader free (no key, renders JS)
+    // ── Strategy 2: AllOrigins proxy ──
     if (!content) {
       try {
-        const res = await fetch(`https://r.jina.ai/${url}`, {
-          headers: {
-            'Accept': 'text/plain',
-            'User-Agent': 'Mozilla/5.0 (compatible; ConvertIQ/1.0)',
-            'X-Timeout': '10',
-          },
-          signal: AbortSignal.timeout(12000),
-        })
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
+        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(12000) })
         if (res.ok) {
-          const text = await res.text()
-          if (text && text.length > 200 && !text.includes('<!DOCTYPE') && !text.includes('<html')) {
-            content = text
-            method = 'jina'
-          }
-        }
-      } catch { /* fall through */ }
-    }
-
-    // Strategy 3: AllOrigins CORS proxy
-    if (!content) {
-      try {
-        const res = await fetch(
-          `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-          { signal: AbortSignal.timeout(12000) }
-        )
-        if (res.ok) {
-          const data = await res.json() as { contents?: string }
+          const data = await res.json() as { contents?: string; status?: { http_code: number } }
           if (data.contents && data.contents.length > 300) {
             content = extractFromHTML(data.contents)
             method = 'allorigins'
@@ -66,36 +56,36 @@ export async function POST(req: NextRequest) {
       } catch { /* fall through */ }
     }
 
-    // Strategy 4: htmlreader.net — another free proxy
+    // ── Strategy 3: corsproxy.io ──
     if (!content) {
       try {
-        const res = await fetch(
-          `https://htmlreader.net/html/?url=${encodeURIComponent(url)}`,
-          {
-            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ConvertIQ/1.0)' },
-            signal: AbortSignal.timeout(10000),
-          }
-        )
+        const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+          },
+          signal: AbortSignal.timeout(12000),
+        })
         if (res.ok) {
           const html = await res.text()
           if (html && html.length > 300 && html.includes('<')) {
             content = extractFromHTML(html)
-            method = 'htmlreader'
+            method = 'corsproxy'
           }
         }
       } catch { /* fall through */ }
     }
 
-    // Strategy 5: Direct fetch
+    // ── Strategy 4: Direct fetch ──
     if (!content) {
       try {
         const res = await fetch(url, {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.9',
+            'Cache-Control': 'no-cache',
           },
-          signal: AbortSignal.timeout(10000),
+          signal: AbortSignal.timeout(12000),
         })
         if (res.ok) {
           const html = await res.text()
@@ -107,10 +97,10 @@ export async function POST(req: NextRequest) {
       } catch { /* fall through */ }
     }
 
-    // If everything failed, still return JSON with URL context
-    if (!content || content.length < 100) {
+    // ── Fallback: URL-only analysis ──
+    if (!content || content.length < 150) {
       return NextResponse.json({
-        content: `URL being audited: ${url}\n\nPage content could not be fetched. Please analyze this website based on:\n1. The domain name and URL structure\n2. What type of business this appears to be\n3. Common CRO issues for this industry\nBe honest that you are analyzing based on inference rather than actual page content.`,
+        content: `Website URL: ${url}\n\nNote: The page content could not be fetched directly (the site may block crawlers or require JavaScript rendering). Please perform your analysis based on:\n1. The domain name and URL path\n2. What type of business or product this URL suggests\n3. Common CRO patterns and issues for this industry\n4. Be transparent that you are inferring rather than reading actual content`,
         method: 'url-only',
         length: 0,
       })
@@ -124,9 +114,10 @@ export async function POST(req: NextRequest) {
 
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
-    // ALWAYS return JSON — never let this route crash to HTML
+    console.error('[fetch-page] error:', msg)
+    // ALWAYS return JSON — never crash to HTML
     return NextResponse.json({
-      content: `URL: ${(err as Error).message}. Analyze based on URL and domain knowledge.`,
+      content: `URL: ${url}. Could not fetch. Analyze based on URL and domain knowledge.`,
       method: 'error',
       error: msg,
     })
@@ -134,60 +125,66 @@ export async function POST(req: NextRequest) {
 }
 
 function extractFromHTML(html: string): string {
+  // Strip noise
   let clean = html
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[\s\S]*?<\/style>/gi, '')
-    .replace(/<svg[\s\S]*?<\/svg>/gi, '')
-    .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')
-    .replace(/<header[\s\S]*?<\/header>/gi, (m) => m) // keep header
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+    .replace(/<svg\b[^<]*(?:(?!<\/svg>)<[^<]*)*<\/svg>/gi, '')
+    .replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, '')
     .replace(/<!--[\s\S]*?-->/g, '')
 
-  const titleMatch = clean.match(/<title[^>]*>([\s\S]*?)<\/title>/i)
-  const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').trim() : ''
-
+  // Extract metadata
+  const title = clean.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.replace(/<[^>]+>/g, '').trim() ?? ''
   const metaDesc =
-    clean.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)/i)?.[1] ||
-    clean.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)/i)?.[1] ||
-    clean.match(/<meta[^>]+content=["']([^"']{20,200})["'][^>]+name=["']description/i)?.[1] || ''
+    clean.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)/i)?.[1] ??
+    clean.match(/<meta[^>]+content=["']([^"']{20,200})["'][^>]+name=["']description/i)?.[1] ??
+    clean.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)/i)?.[1] ?? ''
+  const ogTitle = clean.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)/i)?.[1] ?? ''
 
-  const ogTitle =
-    clean.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)/i)?.[1] || ''
-
+  // Headings
   const headings: string[] = []
   for (const m of clean.matchAll(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi)) {
     const text = m[2].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
     if (text && text.length > 2 && text.length < 200) headings.push(`H${m[1]}: ${text}`)
   }
 
+  // All clickable text
   const btns: string[] = []
-  for (const m of clean.matchAll(/<(?:button|a)[^>]*>([\s\S]*?)<\/(?:button|a)>/gi)) {
+  for (const m of clean.matchAll(/<(?:button|a)\b[^>]*>([\s\S]*?)<\/(?:button|a)>/gi)) {
     const text = m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
     if (text && text.length > 1 && text.length < 80) btns.push(text)
   }
 
+  // Paragraphs and list items
   const paras: string[] = []
-  for (const m of clean.matchAll(/<(?:p|li|span|div)[^>]*>([\s\S]*?)<\/(?:p|li|span|div)>/gi)) {
+  for (const m of clean.matchAll(/<(?:p|li)\b[^>]*>([\s\S]*?)<\/(?:p|li)>/gi)) {
     const text = m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
-    if (text && text.length > 30 && text.length < 500) paras.push(text)
+    if (text && text.length > 25 && text.length < 600) paras.push(text)
   }
 
-  const bodyText = clean.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+  // Full readable text
+  const bodyText = clean
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 
-  return [
+  const parts = [
     `PAGE TITLE: ${title}`,
-    ogTitle ? `OG TITLE: ${ogTitle}` : '',
+    ogTitle && ogTitle !== title ? `OG TITLE: ${ogTitle}` : '',
     `META DESCRIPTION: ${metaDesc}`,
     '',
-    'HEADINGS (in order):',
+    '=== HEADINGS (in page order) ===',
     headings.slice(0, 25).join('\n'),
     '',
-    'BUTTONS & CTAs (all clickable text):',
+    '=== ALL BUTTONS & CTAs ===',
     [...new Set(btns)].slice(0, 30).join(' | '),
     '',
-    'TEXT CONTENT:',
+    '=== TEXT CONTENT ===',
     paras.slice(0, 25).join('\n'),
     '',
-    'FULL PAGE TEXT:',
+    '=== FULL PAGE TEXT ===',
     bodyText.slice(0, 3500),
-  ].filter(Boolean).join('\n')
+  ].filter(Boolean)
+
+  return parts.join('\n')
 }
