@@ -1,7 +1,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --f: -apple-system, sans-serif;
+  --f: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
   --bg: #F7F7F5;
   --bg2: #EFEFEC;
   --bg3: #E2E2DE;
@@ -34,6 +34,12 @@ body {
   color: var(--text);
   font-size: 16px;
   line-height: 1.6;
+  letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
+}
+
+input, textarea, button, select {
+  font-family: var(--f);
 }
