@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-export const maxDuration = 60
+export const maxDuration = 10
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,160 +20,17 @@ export async function POST(req: NextRequest) {
     const copyText = isCustom ? pageContent.replace('CUSTOM_REWRITE:\n', '') : ''
 
     const prompt = isCustom
-      ? `You are a world-class CRO copywriter. Rewrite this website copy to be outcome-focused, specific, and conversion-optimized for ${url}. Return ONLY the rewritten copy, nothing else:\n\n${copyText}`
-      : `You are a world-class CRO (Conversion Rate Optimization) strategist with 15+ years of experience auditing websites for Y Combinator startups, Fortune 500 brands, and high-growth SaaS companies.
+      ? `You are a world-class CRO copywriter. Rewrite this website copy to be outcome-focused and conversion-optimized for ${url}. Return ONLY the rewritten copy, nothing else:\n\n${copyText}`
+      : `You are a senior CRO strategist. Audit this website: ${url}
 
-You are auditing: ${url}
-
-REAL PAGE CONTENT extracted from the live website:
+PAGE CONTENT:
 ---
-${(pageContent || 'No content fetched. Analyze based on the URL and domain name.').slice(0, 9000)}
+${(pageContent || 'No content. Analyze based on URL and domain knowledge.').slice(0, 4000)}
 ---
 
-Read this page exactly like a human scrolling from top to bottom. Identify each distinct section. Name each one descriptively based on what it actually contains — for example: "Opening hero with headline and CTA", "Three-column features grid", "Customer logos strip", "Pricing table", "FAQ accordion", "Bottom CTA banner".
+Read top to bottom like a human. Identify 4-6 sections. Return ONLY raw JSON, no markdown, no code fences.
 
-For each section give an honest senior CRO assessment:
-- What does it say and what is its job in the funnel?
-- Is the copy specific (numbers, outcomes) or vague (powerful, easy, best)?
-- What friction or confusion does it create?
-- What exact change would you make today?
-
-Return ONLY a valid raw JSON object. No markdown. No code fences. No text before or after.
-
-{
-  "scores": {
-    "conversion": 54,
-    "ux": 71,
-    "cta": 43,
-    "trust": 61,
-    "mobile": 68
-  },
-  "score_notes": {
-    "conversion": "Vague headline kills first impression",
-    "ux": "Clean layout but weak hierarchy",
-    "cta": "Learn More is too passive",
-    "trust": "No logos or reviews above fold",
-    "mobile": "CTA hidden below fold on mobile"
-  },
-  "sections": [
-    {
-      "name": "Opening hero with headline and CTA",
-      "score": 45,
-      "what_we_found": "The headline reads: Welcome to Our Platform. The primary CTA says Learn More. There is no subheadline explaining what the product does.",
-      "issues": [
-        {
-          "severity": "high",
-          "what": "Headline has zero outcome clarity",
-          "why": "A cold visitor cannot understand the transformation they get in 3 seconds, increasing bounce rate.",
-          "fix": "Replace with an outcome headline. Example: Cut Your Onboarding Time by 60% — No Engineering Changes Required."
-        },
-        {
-          "severity": "high",
-          "what": "Primary CTA says Learn More",
-          "why": "Learn More signals hesitation and tells visitors nothing about what happens when they click.",
-          "fix": "Replace with a specific action: Start Free Trial, Get My Free Audit, or See How It Works."
-        }
-      ],
-      "copy_rewrite": {
-        "label": "Hero Headline",
-        "original": "Welcome to Our Platform",
-        "improved": "Cut Onboarding Time by 60%. No Engineering Changes Required."
-      }
-    }
-  ],
-  "overall_issues": [
-    {
-      "severity": "high",
-      "title": "No social proof visible above the fold",
-      "description": "Cold visitors see zero trust signals in the first viewport. This is the biggest conversion killer for paid traffic.",
-      "fix": "Add a trusted-by logo row or review count directly below the hero CTA."
-    },
-    {
-      "severity": "high",
-      "title": "Value proposition is unclear",
-      "description": "After reading the page a visitor still cannot articulate what the product does or who it is for.",
-      "fix": "Add a one-sentence value prop: We help [audience] achieve [outcome] without [obstacle]."
-    }
-  ],
-  "copy": {
-    "headline": {
-      "original": "Welcome to Our Platform",
-      "improved": "Cut Onboarding Time by 60%. No Engineering Changes Required."
-    },
-    "subheadline": {
-      "original": "We help businesses achieve their goals",
-      "improved": "Join 2,000 SaaS teams who reduced churn by 40% in 90 days."
-    },
-    "cta": {
-      "original": "Learn More",
-      "improved": "Start Free — No Credit Card Required"
-    },
-    "benefits": {
-      "original": "Fast, powerful, easy to use",
-      "improved": "Ship in hours not weeks. Reduce support tickets by 35%. Works with any stack in under 10 minutes."
-    }
-  },
-  "recommendations": [
-    {
-      "icon": "zap",
-      "title": "Rewrite every CTA on the page",
-      "description": "Every Learn More or Get Started should become specific action-outcome copy tied to your value prop.",
-      "impact": "high"
-    },
-    {
-      "icon": "shield",
-      "title": "Add social proof in the first viewport",
-      "description": "Place customer logos or a review score directly below the hero CTA. Cold traffic needs trust before clicking.",
-      "impact": "high"
-    },
-    {
-      "icon": "target",
-      "title": "Add a clear one-sentence value proposition",
-      "description": "Visitors cannot articulate what you do. Add a who-what-outcome sentence below your headline.",
-      "impact": "high"
-    },
-    {
-      "icon": "users",
-      "title": "Replace generic testimonials with specific ones",
-      "description": "Quotes without names, companies, or results do not build trust. Add full attribution and quantified outcomes.",
-      "impact": "medium"
-    },
-    {
-      "icon": "eye",
-      "title": "Reduce hero section text",
-      "description": "Cut to one headline, one subheadline under 20 words, and one CTA. Remove all competing messages.",
-      "impact": "medium"
-    },
-    {
-      "icon": "trending",
-      "title": "Add friction reducers below every CTA",
-      "description": "Add micro-copy below each button: No credit card required, Cancel anytime. This lifts clicks by 10-25%.",
-      "impact": "medium"
-    }
-  ],
-  "layout": [
-    {
-      "title": "Move social proof to section 2",
-      "description": "Hero then immediately a trust bar with logos or review count. Highest-impact structural change."
-    },
-    {
-      "title": "Place a CTA after every 2 sections",
-      "description": "Do not make visitors scroll back to the top to convert. Add contextual CTAs after features and testimonials."
-    },
-    {
-      "title": "Left-align all body copy",
-      "description": "Centre-aligned body text beyond 2 lines is harder to read. Left-align paragraphs and feature descriptions."
-    },
-    {
-      "title": "Reduce navigation to 3-4 items",
-      "description": "Too many nav links dilute attention. Make the primary CTA the only visually prominent nav element."
-    },
-    {
-      "title": "Add a sticky CTA bar on mobile",
-      "description": "Pin your primary CTA to the bottom on mobile. A sticky bar lifts mobile conversion by 20-40%."
-    }
-  ]
-}`
+{"scores":{"conversion":54,"ux":71,"cta":43,"trust":61,"mobile":68},"score_notes":{"conversion":"Vague headline","ux":"Decent structure","cta":"Weak CTAs","trust":"No social proof","mobile":"CTA below fold"},"sections":[{"name":"Hero Section","score":45,"what_we_found":"The headline says Welcome to Our Platform. CTA says Learn More.","issues":[{"severity":"high","what":"Headline has no outcome clarity","why":"Visitors cannot understand the value in 3 seconds","fix":"Lead with a specific outcome: Cut Onboarding Time by 60% — No Engineering Changes"},{"severity":"high","what":"CTA says Learn More","why":"Weakest possible CTA — signals hesitation","fix":"Replace with: Start Free Trial or Get My Free Audit"}],"copy_rewrite":{"label":"Hero Headline","original":"Welcome to Our Platform","improved":"Cut Onboarding Time by 60%. No Engineering Changes Required."}}],"overall_issues":[{"severity":"high","title":"No social proof above fold","description":"Cold visitors see zero trust signals in the first viewport.","fix":"Add a logo bar or review count directly below the hero CTA."},{"severity":"high","title":"Value proposition unclear","description":"Visitors cannot articulate what you do after 5 seconds.","fix":"Add: We help [audience] achieve [outcome] without [obstacle]."}],"copy":{"headline":{"original":"Welcome to Our Platform","improved":"Cut Onboarding Time by 60%. No Engineering Changes Required."},"subheadline":{"original":"We help businesses achieve their goals","improved":"Join 2,000 teams who reduced churn by 40% in 90 days."},"cta":{"original":"Learn More","improved":"Start Free — No Credit Card Required"},"benefits":{"original":"Fast, powerful, easy","improved":"Ship in hours not weeks. Reduce support tickets by 35%. Works with any stack."}},"recommendations":[{"icon":"zap","title":"Rewrite every CTA on the page","description":"Replace all Learn More with specific action-outcome copy tied to your value prop.","impact":"high"},{"icon":"shield","title":"Add social proof above the fold","description":"Place logos or review score below the hero CTA. Cold traffic needs trust before clicking.","impact":"high"},{"icon":"target","title":"Clarify your value proposition","description":"Add a who-what-outcome sentence below your headline immediately.","impact":"high"},{"icon":"users","title":"Add specific testimonials","description":"Replace generic quotes with full names, company, and quantified results.","impact":"medium"},{"icon":"eye","title":"Simplify the hero section","description":"One headline, one subheadline under 20 words, one CTA. Remove competing messages.","impact":"medium"},{"icon":"trending","title":"Add friction reducers below CTAs","description":"Add: No credit card required, Cancel anytime. Lifts clicks by 10-25%.","impact":"medium"}],"layout":[{"title":"Move social proof to section 2","description":"Hero then logo bar immediately. Highest-impact structural change."},{"title":"Add CTA after every 2 sections","description":"Don't make visitors scroll back to convert. Add contextual CTAs throughout."},{"title":"Left-align all body copy","description":"Centre-aligned body text beyond 2 lines is harder to read."},{"title":"Reduce navigation to 3-4 items","description":"Fewer nav links means more focus on the conversion goal."},{"title":"Add sticky mobile CTA bar","description":"Pin CTA to bottom on mobile. Lifts mobile conversion by 20-40%."}]}`
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -183,8 +40,8 @@ Return ONLY a valid raw JSON object. No markdown. No code fences. No text before
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
-        max_tokens: isCustom ? 600 : 8000,
+        model: 'claude-haiku-4-5',
+        max_tokens: isCustom ? 300 : 3000,
         messages: [{ role: 'user', content: prompt }],
       }),
     })
