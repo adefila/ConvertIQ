@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// NO edge runtime — runs on Node.js for reliability
 export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
@@ -14,48 +13,169 @@ export async function POST(req: NextRequest) {
 
     const apiKey = process.env.ANTHROPIC_API_KEY
     if (!apiKey) {
-      return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured on server' }, { status: 500 })
+      return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 })
     }
 
-    const isCustomRewrite = fetchMethod === 'custom' && typeof pageContent === 'string' && pageContent.startsWith('CUSTOM_REWRITE:')
-    const copyText = isCustomRewrite ? pageContent.replace('CUSTOM_REWRITE:\n', '') : ''
+    const isCustom = fetchMethod === 'custom' && typeof pageContent === 'string' && pageContent.startsWith('CUSTOM_REWRITE:')
+    const copyText = isCustom ? pageContent.replace('CUSTOM_REWRITE:\n', '') : ''
 
-    const fetchNote = !pageContent || pageContent.length < 150
-      ? 'The page could not be fetched. Analyze based on the URL, domain name, and what you know about this type of business.'
-      : `Page was fetched successfully via ${fetchMethod}.`
-
-    const prompt = isCustomRewrite
-      ? `You are a world-class CRO copywriter. Rewrite this website copy to be outcome-focused, specific, and conversion-optimized. Context site: ${url}. Return ONLY the rewritten copy, nothing else:\n\n${copyText}`
+    const prompt = isCustom
+      ? `You are a world-class CRO copywriter. Rewrite this website copy to be outcome-focused, specific, and conversion-optimized for ${url}. Return ONLY the rewritten copy, nothing else:\n\n${copyText}`
       : `You are a world-class CRO (Conversion Rate Optimization) strategist with 15+ years of experience auditing websites for Y Combinator startups, Fortune 500 brands, and high-growth SaaS companies.
 
 You are auditing: ${url}
-${fetchNote}
 
 REAL PAGE CONTENT extracted from the live website:
 ---
-${(pageContent || '').slice(0, 9000)}
+${(pageContent || 'No content fetched. Analyze based on the URL and domain name.').slice(0, 9000)}
 ---
 
-Your task: Read this page exactly like a human scrolling from top to bottom. Identify each distinct section you can see. Name each one descriptively based on what it actually contains — for example: "Opening hero with headline and CTA", "Three-column features grid", "Customer logos strip", "Pricing table with three tiers", "FAQ accordion", "Bottom CTA banner". You do not need official names — describe what you see.
+Read this page exactly like a human scrolling from top to bottom. Identify each distinct section. Name each one descriptively based on what it actually contains — for example: "Opening hero with headline and CTA", "Three-column features grid", "Customer logos strip", "Pricing table", "FAQ accordion", "Bottom CTA banner".
 
-For each section, give an honest senior CRO assessment:
-- What does it say and what job is it doing?
-- Is the copy specific (numbers, outcomes, names) or vague (powerful, easy, best-in-class)?
+For each section give an honest senior CRO assessment:
+- What does it say and what is its job in the funnel?
+- Is the copy specific (numbers, outcomes) or vague (powerful, easy, best)?
 - What friction or confusion does it create?
 - What exact change would you make today?
 
-Scoring criteria per section:
-- CLARITY: Cold visitor understands in 3 seconds?
-- SPECIFICITY: Real outcomes/numbers or buzzwords?
-- FRICTION: What objections or confusion?
-- TRUST: Builds or erodes credibility?
-- ACTION: Guides toward conversion?
+Return ONLY a valid raw JSON object. No markdown. No code fences. No text before or after.
 
-Return ONLY a valid raw JSON object. Absolutely no markdown, no code fences, no text before or after.
+{
+  "scores": {
+    "conversion": 54,
+    "ux": 71,
+    "cta": 43,
+    "trust": 61,
+    "mobile": 68
+  },
+  "score_notes": {
+    "conversion": "Vague headline kills first impression",
+    "ux": "Clean layout but weak hierarchy",
+    "cta": "Learn More is too passive",
+    "trust": "No logos or reviews above fold",
+    "mobile": "CTA hidden below fold on mobile"
+  },
+  "sections": [
+    {
+      "name": "Opening hero with headline and CTA",
+      "score": 45,
+      "what_we_found": "The headline reads: Welcome to Our Platform. The primary CTA says Learn More. There is no subheadline explaining what the product does.",
+      "issues": [
+        {
+          "severity": "high",
+          "what": "Headline has zero outcome clarity",
+          "why": "A cold visitor cannot understand the transformation they get in 3 seconds, increasing bounce rate.",
+          "fix": "Replace with an outcome headline. Example: Cut Your Onboarding Time by 60% — No Engineering Changes Required."
+        },
+        {
+          "severity": "high",
+          "what": "Primary CTA says Learn More",
+          "why": "Learn More signals hesitation and tells visitors nothing about what happens when they click.",
+          "fix": "Replace with a specific action: Start Free Trial, Get My Free Audit, or See How It Works."
+        }
+      ],
+      "copy_rewrite": {
+        "label": "Hero Headline",
+        "original": "Welcome to Our Platform",
+        "improved": "Cut Onboarding Time by 60%. No Engineering Changes Required."
+      }
+    }
+  ],
+  "overall_issues": [
+    {
+      "severity": "high",
+      "title": "No social proof visible above the fold",
+      "description": "Cold visitors see zero trust signals in the first viewport. This is the biggest conversion killer for paid traffic.",
+      "fix": "Add a trusted-by logo row or review count directly below the hero CTA."
+    },
+    {
+      "severity": "high",
+      "title": "Value proposition is unclear",
+      "description": "After reading the page a visitor still cannot articulate what the product does or who it is for.",
+      "fix": "Add a one-sentence value prop: We help [audience] achieve [outcome] without [obstacle]."
+    }
+  ],
+  "copy": {
+    "headline": {
+      "original": "Welcome to Our Platform",
+      "improved": "Cut Onboarding Time by 60%. No Engineering Changes Required."
+    },
+    "subheadline": {
+      "original": "We help businesses achieve their goals",
+      "improved": "Join 2,000 SaaS teams who reduced churn by 40% in 90 days."
+    },
+    "cta": {
+      "original": "Learn More",
+      "improved": "Start Free — No Credit Card Required"
+    },
+    "benefits": {
+      "original": "Fast, powerful, easy to use",
+      "improved": "Ship in hours not weeks. Reduce support tickets by 35%. Works with any stack in under 10 minutes."
+    }
+  },
+  "recommendations": [
+    {
+      "icon": "zap",
+      "title": "Rewrite every CTA on the page",
+      "description": "Every Learn More or Get Started should become specific action-outcome copy tied to your value prop.",
+      "impact": "high"
+    },
+    {
+      "icon": "shield",
+      "title": "Add social proof in the first viewport",
+      "description": "Place customer logos or a review score directly below the hero CTA. Cold traffic needs trust before clicking.",
+      "impact": "high"
+    },
+    {
+      "icon": "target",
+      "title": "Add a clear one-sentence value proposition",
+      "description": "Visitors cannot articulate what you do. Add a who-what-outcome sentence below your headline.",
+      "impact": "high"
+    },
+    {
+      "icon": "users",
+      "title": "Replace generic testimonials with specific ones",
+      "description": "Quotes without names, companies, or results do not build trust. Add full attribution and quantified outcomes.",
+      "impact": "medium"
+    },
+    {
+      "icon": "eye",
+      "title": "Reduce hero section text",
+      "description": "Cut to one headline, one subheadline under 20 words, and one CTA. Remove all competing messages.",
+      "impact": "medium"
+    },
+    {
+      "icon": "trending",
+      "title": "Add friction reducers below every CTA",
+      "description": "Add micro-copy below each button: No credit card required, Cancel anytime. This lifts clicks by 10-25%.",
+      "impact": "medium"
+    }
+  ],
+  "layout": [
+    {
+      "title": "Move social proof to section 2",
+      "description": "Hero then immediately a trust bar with logos or review count. Highest-impact structural change."
+    },
+    {
+      "title": "Place a CTA after every 2 sections",
+      "description": "Do not make visitors scroll back to the top to convert. Add contextual CTAs after features and testimonials."
+    },
+    {
+      "title": "Left-align all body copy",
+      "description": "Centre-aligned body text beyond 2 lines is harder to read. Left-align paragraphs and feature descriptions."
+    },
+    {
+      "title": "Reduce navigation to 3-4 items",
+      "description": "Too many nav links dilute attention. Make the primary CTA the only visually prominent nav element."
+    },
+    {
+      "title": "Add a sticky CTA bar on mobile",
+      "description": "Pin your primary CTA to the bottom on mobile. A sticky bar lifts mobile conversion by 20-40%."
+    }
+  ]
+}`
 
-{"scores":{"conversion":54,"ux":71,"cta":43,"trust":61,"mobile":68},"score_notes":{"conversion":"Vague headline kills first impression","ux":"Clean layout but weak hierarchy","cta":"Learn More is too passive","trust":"No logos or reviews above fold","mobile":"CTA hidden below fold on mobile"},"sections":[{"name":"Opening hero with headline and CTA","score":45,"what_we_found":"The headline reads: Welcome to Our Platform. The primary CTA says Learn More. There is no subheadline. The hero has no social proof or trust signals visible.","issues":[{"severity":"high","what":"Headline has zero outcome clarity","why":"A cold visitor cannot understand the transformation they get in 3 seconds. This directly increases bounce rate for paid traffic.","fix":"Replace with an outcome headline. Example: Cut Your Onboarding Time by 60% — No Engineering Changes Required. Lead with the result the customer gets, not a generic welcome."},{"severity":"high","what":"Primary CTA says Learn More","why":"Learn More is the weakest CTA phrase. It signals hesitation and tells visitors nothing about what happens when they click.","fix":"Replace with a specific action: Start Free Trial, Get My Free Audit, See How It Works. Match the CTA to the exact next step in your funnel."}],"copy_rewrite":{"label":"Hero Headline","original":"Welcome to Our Platform","improved":"Cut Onboarding Time by 60%. No Engineering Changes Required."}}],"overall_issues":[{"severity":"high","title":"No social proof visible above the fold","description":"Cold visitors see zero trust signals in the first viewport. This is the single biggest conversion killer for paid and cold traffic.","fix":"Add a trusted-by logo row or a review count directly below the hero CTA. Even 3-4 recognizable logos increases conversion significantly."},{"severity":"high","title":"Value proposition is unclear after 5 seconds","description":"After reading the page a visitor still cannot clearly articulate what the product does, who it is for, or what outcome they will get.","fix":"Add a one-sentence value prop below the headline using this formula: We help [target audience] achieve [specific outcome] without [main obstacle]."}],"copy":{"headline":{"original":"Welcome to Our Platform","improved":"Cut Onboarding Time by 60%. No Engineering Changes Required."},"subheadline":{"original":"We help businesses achieve their goals with our comprehensive solution","improved":"Join 2,000 SaaS teams who reduced churn by 40% in 90 days using automated onboarding flows."},"cta":{"original":"Learn More","improved":"Start Free — No Credit Card Required"},"benefits":{"original":"Fast, powerful, easy to use","improved":"Ship onboarding flows in hours not weeks. Reduce support tickets by 35%. Plug into any stack in under 10 minutes."}},"recommendations":[{"icon":"zap","title":"Rewrite every CTA on the page","description":"Every Learn More, Get Started, or Click Here should become specific action-outcome copy tied to your value prop. This is the single highest-ROI change you can make today.","impact":"high"},{"icon":"shield","title":"Add social proof in the first viewport","description":"Place customer logos or a review aggregate score directly below the hero CTA. Cold traffic needs trust signals before they will click anything.","impact":"high"},{"icon":"target","title":"Add a clear one-sentence value proposition","description":"Visitors cannot articulate what you do. Add a who-what-outcome sentence below your headline immediately.","impact":"high"},{"icon":"users","title":"Replace generic testimonials with specific ones","description":"Quotes without names, companies, or quantified results do not build trust. Add full attribution and specific outcomes like increased revenue by 40%.","impact":"medium"},{"icon":"eye","title":"Reduce hero section text","description":"The hero has too many competing messages. Cut to one headline, one subheadline under 20 words, and one primary CTA.","impact":"medium"},{"icon":"trending","title":"Add friction reducers below every CTA","description":"Add micro-copy below each button: No credit card required, Cancel anytime, Free for 14 days. This alone lifts CTA clicks by 10-25%.","impact":"medium"}],"layout":[{"title":"Move social proof to section 2","description":"Structure: Hero then immediately a trust bar with logos or review count. This is the highest-impact structural change you can make."},{"title":"Place a CTA at the end of every 2 sections","description":"Do not make visitors scroll back to the top to convert. Add a contextual CTA button after features and after testimonials."},{"title":"Left-align all body copy","description":"Centre-aligned body text beyond 2 lines is harder to read. Left-align all paragraphs and feature descriptions while keeping headlines centred."},{"title":"Reduce navigation to 3-4 items maximum","description":"Too many nav links dilute attention from the conversion goal. Make the primary CTA the only visually prominent element in the nav."},{"title":"Add a sticky CTA bar on mobile","description":"Pin your primary CTA to the bottom of the screen on mobile. Mobile visitors scroll past CTAs. A sticky bar lifts mobile conversion by 20-40%."}]}`
-
-    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -64,26 +184,23 @@ Return ONLY a valid raw JSON object. Absolutely no markdown, no code fences, no 
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-5',
-        max_tokens: isCustomRewrite ? 600 : 8000,
+        max_tokens: isCustom ? 600 : 8000,
         messages: [{ role: 'user', content: prompt }],
       }),
     })
 
-    if (!anthropicRes.ok) {
-      const errText = await anthropicRes.text()
+    if (!res.ok) {
+      const errText = await res.text()
       return NextResponse.json(
-        { error: `Anthropic API error ${anthropicRes.status}: ${errText.slice(0, 300)}` },
+        { error: `Anthropic API error ${res.status}: ${errText.slice(0, 400)}` },
         { status: 500 }
       )
     }
 
-    const anthropicData = await anthropicRes.json() as {
-      content: Array<{ type: string; text: string }>
-    }
+    const data = await res.json() as { content: Array<{ type: string; text: string }> }
+    const text = data.content?.[0]?.text ?? ''
 
-    const text = anthropicData.content?.[0]?.text ?? ''
-
-    if (isCustomRewrite) {
+    if (isCustom) {
       return NextResponse.json({
         ok: true,
         result: {
@@ -103,12 +220,7 @@ Return ONLY a valid raw JSON object. Absolutely no markdown, no code fences, no 
       })
     }
 
-    // Parse JSON from Claude response
-    let clean = text
-      .replace(/```json[\r\n]?/g, '')
-      .replace(/```[\r\n]?/g, '')
-      .trim()
-
+    let clean = text.replace(/```json[\r\n]?/g, '').replace(/```[\r\n]?/g, '').trim()
     const start = clean.indexOf('{')
     const end = clean.lastIndexOf('}')
     if (start !== -1 && end !== -1) clean = clean.slice(start, end + 1)
@@ -118,7 +230,7 @@ Return ONLY a valid raw JSON object. Absolutely no markdown, no code fences, no 
 
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
-    console.error('[audit] error:', msg)
+    console.error('[audit]', msg)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
