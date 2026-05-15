@@ -18,20 +18,110 @@ export async function POST(req: NextRequest) {
 
     const isCustom = fetchMethod === 'custom' && typeof pageContent === 'string' && pageContent.startsWith('CUSTOM_REWRITE:')
     const copyText = isCustom ? pageContent.replace('CUSTOM_REWRITE:\n', '') : ''
-    const content = (pageContent || '').slice(0, 6000)
+    const content = (pageContent || '').slice(0, 8000)
 
     const prompt = isCustom
-      ? `Rewrite this website copy to be conversion-focused for ${url}. Return ONLY the rewritten copy:\n\n${copyText}`
-      : `You are a senior CRO strategist. Audit this website: ${url}
+      ? `You are a world-class CRO copywriter. Rewrite this website copy to be specific, outcome-focused, and conversion-optimized for ${url}. Return ONLY the rewritten copy, nothing else:\n\n${copyText}`
+      : `You are a world-class CRO (Conversion Rate Optimization) strategist with 15+ years experience auditing websites for high-growth startups and Fortune 500 companies.
 
-PAGE CONTENT:
+You are auditing: ${url}
+
+REAL PAGE CONTENT extracted from the live website:
 ---
 ${content}
 ---
 
-Read top to bottom like a human. Identify 4-6 real sections. Return ONLY raw JSON, no markdown, no code fences, no text before or after the JSON.
+Your task: Read this page EXACTLY like a human scrolling top to bottom. Identify every distinct section you can see. For each section, QUOTE the actual copy you found — do not paraphrase or invent copy. Use the real headlines, CTAs, and text from the content above.
 
-{"scores":{"conversion":54,"ux":68,"cta":42,"trust":58,"mobile":65},"score_notes":{"conversion":"Weak value prop above fold","ux":"Decent layout needs work","cta":"Generic CTAs throughout","trust":"No social proof visible","mobile":"CTA not optimized"},"sections":[{"name":"Hero Section","score":48,"what_we_found":"Opening section with headline and CTA. Copy is feature-focused rather than outcome-focused.","issues":[{"severity":"high","what":"Headline lacks outcome clarity","why":"Visitors cannot understand the value in 3 seconds, causing high bounce rates","fix":"Rewrite headline to lead with specific outcome: what changes for the visitor after using this product"},{"severity":"high","what":"CTA is generic and weak","why":"Generic CTAs reduce click-through rates by 20-30% compared to specific action copy","fix":"Replace with outcome-specific CTA tied to the headline promise"}],"copy_rewrite":{"label":"Hero headline","original":"The platform built for modern teams","improved":"Ship Projects 40% Faster — Your Team Will Actually Use This"}},{"name":"Features Section","score":55,"what_we_found":"Grid of product features with descriptions. Written as capabilities rather than customer benefits.","issues":[{"severity":"medium","what":"Features listed not benefits communicated","why":"Visitors buy outcomes not features. Feature lists create cognitive load and slow decisions.","fix":"Rewrite each feature as a benefit: Feature so you can Outcome"},{"severity":"low","what":"No social proof alongside features","why":"Claims without evidence are less convincing","fix":"Add a short customer quote next to your most important feature"}],"copy_rewrite":{"label":"Feature description","original":"Real-time collaboration tools","improved":"Your whole team always in sync — no more version conflicts or lost work"}},{"name":"Social Proof Section","score":62,"what_we_found":"Testimonials or logos present but may lack the specificity needed to build real trust.","issues":[{"severity":"medium","what":"Testimonials lack specific measurable results","why":"Vague praise does not convert. Visitors need to see specific outcomes.","fix":"Add specific metrics: reduced churn by 30%, saved 5 hours per week"},{"severity":"low","what":"Logo bar lacks context","why":"Logos alone do not explain why companies chose you","fix":"Add a stat: Trusted by 500+ teams at these companies"}],"copy_rewrite":{"label":"Testimonial","original":"Great product, highly recommend","improved":"We cut onboarding from 2 weeks to 3 days. Best investment we made this year — Sarah K, Head of Product"}},{"name":"CTA Section","score":44,"what_we_found":"Conversion section near bottom. Missing friction reducers that remove hesitation.","issues":[{"severity":"high","what":"No friction reducers below CTA","why":"Visitors hesitate when they do not know the commitment level","fix":"Add: No credit card required · Cancel anytime · Free for 14 days"},{"severity":"medium","what":"Only one CTA option","why":"Visitors not ready to buy have no alternative path","fix":"Add secondary CTA: Watch a 2-min demo"}],"copy_rewrite":{"label":"Primary CTA","original":"Get started","improved":"Start Free — No Credit Card Required"}}],"overall_issues":[{"severity":"high","title":"No social proof in the first viewport","description":"Cold visitors see zero trust signals before deciding whether to engage. This is the single biggest conversion killer.","fix":"Move a customer logo row or review count directly below the hero CTA."},{"severity":"high","title":"Value proposition unclear after 5 seconds","description":"A first-time visitor cannot clearly articulate what the product does and who it is for.","fix":"Add: We help [specific audience] achieve [outcome] without [obstacle] below the headline."},{"severity":"medium","title":"Missing risk reversers near CTAs","description":"Every CTA needs micro-copy that removes the fear of commitment.","fix":"Add: No credit card required · Cancel anytime · Free for 14 days below every CTA."}],"copy":{"headline":{"original":"The platform built for modern teams","improved":"Ship Projects 40% Faster — Your Team Will Actually Use This"},"subheadline":{"original":"Everything your team needs in one place","improved":"Join 3,000 teams who cut project delivery time in half without changing how they work"},"cta":{"original":"Get started","improved":"Start Free — No Credit Card Required"},"benefits":{"original":"Collaborate organize and ship faster","improved":"Ship in days not weeks. Everyone always in sync. Zero onboarding time for new hires."}},"recommendations":[{"icon":"zap","title":"Rewrite every CTA with outcome copy","description":"Replace all generic CTAs with specific action-outcome phrases. Highest ROI change today.","impact":"high"},{"icon":"shield","title":"Add social proof in the first viewport","description":"Place customer logos or review score below hero CTA. Trust before the scroll is critical.","impact":"high"},{"icon":"target","title":"Add a clear value proposition","description":"One sentence: We help X achieve Y without Z. Visitors need this to self-qualify instantly.","impact":"high"},{"icon":"users","title":"Make testimonials specific","description":"Replace vague praise with quotes that include name, company, role, and measurable result.","impact":"medium"},{"icon":"eye","title":"Simplify the hero to one message","description":"One headline, one subheadline under 20 words, one CTA. Remove competing messages.","impact":"medium"},{"icon":"trending","title":"Add friction reducers below CTAs","description":"No credit card required, Cancel anytime. These lift CTA clicks by 10-25%.","impact":"medium"}],"layout":[{"title":"Move social proof immediately after hero","description":"Logo bar or review count right after hero, before features. Highest-impact structural change."},{"title":"Add a CTA after every 2 sections","description":"Do not make visitors scroll back to convert. Place buttons after features and testimonials."},{"title":"Left-align all body copy","description":"Centre-aligned paragraphs beyond 2 lines are harder to read. Left-align all body text."},{"title":"Reduce navigation to 3-4 items","description":"Every extra nav link competes with your conversion goal. One prominent CTA in the nav only."},{"title":"Add a sticky CTA bar on mobile","description":"Pin the primary CTA to the bottom on mobile. Lifts mobile conversion by 20-40%."}]}`
+The Copy Rewriter tab will pull directly from each section's copy_rewrite field — so every section must have a copy_rewrite with the REAL original text quoted from the page.
+
+Return ONLY a valid raw JSON object. No markdown. No code fences. No text before or after.
+
+{
+  "scores": {
+    "conversion": <0-100 honest score>,
+    "ux": <0-100>,
+    "cta": <0-100>,
+    "trust": <0-100>,
+    "mobile": <0-100>
+  },
+  "score_notes": {
+    "conversion": "<6-8 word verdict quoting something specific from the page>",
+    "ux": "<6-8 word verdict>",
+    "cta": "<6-8 word verdict quoting the actual CTA text found>",
+    "trust": "<6-8 word verdict>",
+    "mobile": "<6-8 word verdict>"
+  },
+  "sections": [
+    {
+      "name": "<descriptive section name e.g. Hero, Features Grid, Pricing Table, FAQ, Bottom CTA>",
+      "score": <0-100>,
+      "what_we_found": "<2-3 sentences describing exactly what this section contains — QUOTE actual copy from the page in quotes>",
+      "issues": [
+        {
+          "severity": "high|medium|low",
+          "what": "<specific issue — quote real copy where possible>",
+          "why": "<exactly why this hurts conversion for this specific audience>",
+          "fix": "<expert actionable fix with example rewritten copy>"
+        }
+      ],
+      "copy_rewrite": {
+        "label": "<what this copy is e.g. Hero Headline, Primary CTA, Feature Benefit, Section Headline>",
+        "original": "<QUOTE the exact text from the page — this must be real copy found above>",
+        "improved": "<expert CRO rewrite — outcome-focused, specific, conversion-optimized>"
+      }
+    }
+  ],
+  "overall_issues": [
+    {
+      "severity": "high|medium|low",
+      "title": "<site-wide issue>",
+      "description": "<2 sentences with specific evidence from the page>",
+      "fix": "<expert fix with example>"
+    }
+  ],
+  "copy": {
+    "headline": {
+      "original": "<QUOTE the actual H1 from the page>",
+      "improved": "<outcome-driven rewrite specific to their product>"
+    },
+    "subheadline": {
+      "original": "<QUOTE actual subheadline>",
+      "improved": "<benefit-led rewrite>"
+    },
+    "cta": {
+      "original": "<QUOTE actual primary CTA button text>",
+      "improved": "<high-intent rewrite with friction reducer>"
+    },
+    "benefits": {
+      "original": "<QUOTE actual benefits or features copy>",
+      "improved": "<outcome-focused rewrite>"
+    }
+  },
+  "recommendations": [
+    {
+      "icon": "<chart|shield|cursor|star|users|zap|target|eye|lock|trending>",
+      "title": "<specific recommendation>",
+      "description": "<2 sentences specific to what you found on this site>",
+      "impact": "high|medium"
+    }
+  ],
+  "layout": [
+    {
+      "title": "<structural change>",
+      "description": "<why this matters for this specific site>"
+    }
+  ]
+}
+
+Rules:
+- sections: identify 5-8 sections from the actual content — name them what they are
+- Every copy_rewrite.original must be a REAL QUOTE from the page content above
+- overall_issues: 3-4 site-wide problems with evidence
+- recommendations: 6 items
+- layout: 5 items
+- Be honest — most sites score 40-65
+- If content was not fetchable, analyze based on URL and domain knowledge and be transparent about it`
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -42,7 +132,7 @@ Read top to bottom like a human. Identify 4-6 real sections. Return ONLY raw JSO
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-5',
-        max_tokens: isCustom ? 300 : 4000,
+        max_tokens: isCustom ? 400 : 5000,
         messages: [{ role: 'user', content: prompt }],
       }),
     })
@@ -67,7 +157,7 @@ Read top to bottom like a human. Identify 4-6 real sections. Return ONLY raw JSO
           sections: [],
           overall_issues: [],
           copy: {
-            headline: { original: copyText.slice(0, 100), improved: text.trim() },
+            headline: { original: copyText.slice(0, 150), improved: text.trim() },
             subheadline: { original: '', improved: '' },
             cta: { original: '', improved: '' },
             benefits: { original: '', improved: '' },
