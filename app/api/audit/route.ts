@@ -122,22 +122,18 @@ Return ONLY a valid JSON object. Rules:
       .replace(/```\s*/g, '')
       .trim()
 
-    // 2. Strip BOM and ALL zero-width / invisible unicode characters
-    // These are the #1 cause of "Expected property name at position 1"
-    // Claude often inserts U+200B (zero-width space) right after the opening {
+    // 2. Strip ALL invisible/zero-width unicode characters
     clean = clean.replace(
-      /[\uFEFF\u200B\u200C\u200D\u2060\u00AD\u200E\u200F\u202A-\u202F\u2066-\u2069]/g,
+      /[\uFEFF\u200B\u200C\u200D\u2060\u00AD\u200E\u200F\u202A-\u202F\u2066-\u2069\u00A0]/g,
       ''
     )
 
-    // 3. Replace fancy unicode with ASCII equivalents
+    // 3. Replace fancy unicode with ASCII
     clean = clean
       .replace(/[\u2018\u2019\u02BC]/g, "'")
       .replace(/[\u201C\u201D]/g, '"')
       .replace(/[\u2013\u2014\u2015]/g, '-')
       .replace(/\u2026/g, '...')
-      .replace(/\u00B7/g, '-')
-      .replace(/\u00A0/g, ' ')
       .replace(/[\u2000-\u200A]/g, ' ')
 
     // 4. Extract outermost JSON object
@@ -147,9 +143,7 @@ Return ONLY a valid JSON object. Rules:
       clean = clean.slice(startIdx, endIdx + 1)
     }
 
-    // 5. Escape raw control characters inside JSON string values
-    // Simple but correct: replace ALL raw control chars
-    // (newlines/tabs outside strings are fine, but inside strings they must be escaped)
+    // 5. Escape raw control characters
     clean = clean.replace(/[\u0000-\u001F]/g, (char) => {
       if (char === '\n') return '\\n'
       if (char === '\r') return '\\r'
@@ -157,36 +151,27 @@ Return ONLY a valid JSON object. Rules:
       return ' '
     })
 
-    // 6. Parse
+    // 6. Parse — return debug info if it fails so we can see what went wrong
     let result
     try {
       result = JSON.parse(clean)
-    } catch {
-      result = {
-        scores: { conversion: 50, ux: 55, cta: 45, trust: 50, mobile: 55 },
-        score_notes: {
-          conversion: 'Run audit again',
-          ux: 'Run audit again',
-          cta: 'Run audit again',
-          trust: 'Run audit again',
-          mobile: 'Run audit again',
-        },
-        sections: [{
-          name: 'Please run the audit again',
-          score: 50,
-          what_we_found: 'The audit ran but had a formatting issue. Click Analyze again to get your full results.',
-          issues: [],
-        }],
-        overall_issues: [],
-        copy: {
-          headline: { original: '', improved: '' },
-          subheadline: { original: '', improved: '' },
-          cta: { original: '', improved: '' },
-          benefits: { original: '', improved: '' },
-        },
-        recommendations: [],
-        layout: [],
-      }
+    } catch (parseErr) {
+      const errMsg = parseErr instanceof Error ? parseErr.message : String(parseErr)
+      // Extract position number from error message
+      const posMatch = errMsg.match(/position (\d+)/)
+      const pos = posMatch ? parseInt(posMatch[1]) : -1
+      const snippet = pos >= 0 ? clean.slice(Math.max(0, pos - 30), pos + 30) : clean.slice(0, 100)
+      const charCodes = pos >= 0
+        ? Array.from(clean.slice(Math.max(0, pos - 5), pos + 5)).map(c => `${c}(${c.charCodeAt(0)})`)
+        : []
+
+      // Return the debug info as an error so it shows in the UI
+      return new Response(
+        JSON.stringify({
+          error: `JSON parse failed at position ${pos}: ${errMsg}. Near: "${snippet}". Chars: ${charCodes.join(' ')}`,
+        }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
     return new Response(
