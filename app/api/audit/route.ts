@@ -39,7 +39,7 @@ Return ONLY a valid JSON object. No markdown. No code fences. Start with { end w
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5',
-        max_tokens: isCustom ? 400 : 6000,
+        max_tokens: isCustom ? 400 : 8000,
         messages: [{ role: 'user', content: prompt }],
       }),
     })
