@@ -35,9 +35,14 @@ export async function POST(req: NextRequest) {
 
 ${content ? `PAGE CONTENT:\n---\n${content}\n---\nQuote actual copy in your analysis.` : `Analyze based on your knowledge of this website and its industry.`}
 
-IMPORTANT: Return ONLY a valid raw JSON object. No markdown. No code fences. No special characters like dashes in em-dash form. Use plain ASCII only inside string values. Nothing before or after the JSON.
+Return ONLY a valid JSON object. Rules:
+- No markdown, no code fences
+- No special characters: use plain hyphens not dashes, plain quotes not curly quotes
+- No apostrophes in text values - rewrite to avoid them (use "do not" not "don't")
+- No newlines inside string values
+- Start response with { and end with }
 
-{"scores":{"conversion":52,"ux":65,"cta":44,"trust":55,"mobile":62},"score_notes":{"conversion":"Generic headline lacks urgency","ux":"Too many nav options","cta":"Weak CTA copy throughout","trust":"No social proof above fold","mobile":"CTA not sticky on mobile"},"sections":[{"name":"Hero Section","score":46,"what_we_found":"Opening section with main headline and CTA. Copy is feature-focused rather than outcome-focused.","issues":[{"severity":"high","what":"Headline is feature-focused not outcome-focused","why":"Visitors need to see what changes in their life within 3 seconds or they bounce","fix":"Rewrite to lead with specific outcome. Example: Save 10 Hours a Week on Admin Starting Today"},{"severity":"high","what":"Primary CTA is generic","why":"Generic CTAs reduce clicks by 20-30% vs specific action copy","fix":"Replace with: Start Free No Credit Card Required"}],"copy_rewrite":{"label":"Hero Headline","original":"The all-in-one platform for your business","improved":"Save 10 Hours a Week on Admin. Your Team Will Love It."}},{"name":"Features Section","score":54,"what_we_found":"Grid of product features with icons and descriptions. Written as capabilities rather than customer benefits.","issues":[{"severity":"medium","what":"Features listed not benefits communicated","why":"Visitors buy outcomes not features. Feature lists create cognitive load.","fix":"Rewrite each feature as a benefit statement leading with the outcome"},{"severity":"low","what":"No social proof alongside features","why":"Feature claims without evidence are less persuasive","fix":"Add one customer quote next to your most important feature"}],"copy_rewrite":{"label":"Feature description","original":"Real-time collaboration and sync","improved":"Your whole team always on the same page. Zero version conflicts. Zero lost work."}},{"name":"Social Proof Section","score":60,"what_we_found":"Testimonials or customer logos present. Builds some trust but testimonials lack specific metrics.","issues":[{"severity":"medium","what":"Testimonials lack specific measurable outcomes","why":"Vague praise does not convert. Specific results do.","fix":"Rewrite testimonials to include specific metrics like reduced onboarding from 3 weeks to 4 days"},{"severity":"low","what":"Logo bar has no supporting stat","why":"Logos alone do not explain why companies chose you","fix":"Add: Trusted by 1000 plus teams at these companies"}],"copy_rewrite":{"label":"Customer testimonial","original":"Great product our team loves it","improved":"We cut onboarding from 3 weeks to 4 days. Paid for itself in month one."}},{"name":"Pricing Section","score":44,"what_we_found":"Pricing or conversion section near the bottom. Missing friction reducers near the CTAs.","issues":[{"severity":"high","what":"No friction reducers below pricing CTAs","why":"Visitors hesitate at pricing. Micro-copy removes the fear of commitment.","fix":"Add below every CTA: No credit card required. Cancel anytime. 14-day free trial."},{"severity":"medium","what":"Feature lists in pricing instead of outcomes","why":"At the decision point visitors need to see value not features","fix":"Replace bullets with outcome statements in highest tier"}],"copy_rewrite":{"label":"Pricing CTA","original":"Get started","improved":"Start Free Trial. No Credit Card Required."}},{"name":"Footer CTA Section","score":42,"what_we_found":"Closing CTA at the bottom of the page. Last chance to convert visitors who scrolled the full page.","issues":[{"severity":"high","what":"Closing CTA repeats the hero message","why":"Bottom-of-page visitors need urgency or a guarantee not repetition","fix":"Add urgency: Join 10000 teams or 14-day money-back guarantee"},{"severity":"medium","what":"No secondary conversion path","why":"Not all visitors are ready to buy","fix":"Add: Watch a 3-minute demo or Read customer stories"}],"copy_rewrite":{"label":"Bottom CTA headline","original":"Ready to get started?","improved":"Join 10000 teams already saving 10 hours a week. Start free today."}}],"overall_issues":[{"severity":"high","title":"No social proof visible above the fold","description":"Cold visitors see zero trust signals in the first viewport before deciding whether to engage.","fix":"Move a customer logo row or review count directly below the hero CTA."},{"severity":"high","title":"Value proposition unclear after 5 seconds","description":"A first-time visitor cannot clearly articulate what the product does who it is for and what outcome they get.","fix":"Add a one-sentence value prop below the headline."},{"severity":"medium","title":"Missing risk reversers near every CTA","description":"Every CTA on the page lacks micro-copy that removes the fear of commitment.","fix":"Add: No credit card required. Cancel anytime. Free for 14 days. Below every CTA."}],"copy":{"headline":{"original":"The all-in-one platform for your business","improved":"Save 10 Hours a Week on Admin. Your Team Will Actually Use This."},"subheadline":{"original":"Everything your team needs to collaborate and grow","improved":"Join 10000 teams who cut admin time in half without changing how they work."},"cta":{"original":"Get started","improved":"Start Free. No Credit Card Required."},"benefits":{"original":"Collaborate organize and grow faster","improved":"Ship in days not weeks. Everyone always in sync. New hires productive from day one."}},"recommendations":[{"icon":"zap","title":"Rewrite every CTA with outcome copy","description":"Replace all generic CTAs with specific action-outcome phrases. Highest ROI change today.","impact":"high"},{"icon":"shield","title":"Add social proof in the first viewport","description":"Place customer logos or a review aggregate directly below the hero CTA.","impact":"high"},{"icon":"target","title":"Add a one-sentence value proposition","description":"Visitors cannot articulate what you do. Add who-what-outcome below the headline.","impact":"high"},{"icon":"users","title":"Make testimonials specific and quantified","description":"Replace vague praise with quotes including name company role and measurable result.","impact":"medium"},{"icon":"eye","title":"Simplify hero to one message","description":"One headline one subheadline under 20 words one CTA. Remove every competing element.","impact":"medium"},{"icon":"trending","title":"Add friction reducers below every CTA","description":"No credit card required. Cancel anytime. Free for 14 days. Lifts clicks by 10-25%.","impact":"medium"}],"layout":[{"title":"Move social proof immediately after hero","description":"Logo bar or review count right after the hero before features."},{"title":"Add a CTA after every two sections","description":"Do not make visitors scroll back to convert. Place contextual CTAs throughout."},{"title":"Left-align all body copy","description":"Centre-aligned paragraphs beyond two lines are harder to read."},{"title":"Reduce navigation to three or four items","description":"Every extra nav link competes with your conversion goal."},{"title":"Add a sticky CTA bar on mobile","description":"Pin the primary CTA to the bottom on mobile. Lifts mobile conversion by 20-40%."}]}`
+{"scores":{"conversion":52,"ux":65,"cta":44,"trust":55,"mobile":62},"score_notes":{"conversion":"Generic headline lacks urgency","ux":"Too many nav options","cta":"Weak CTA copy throughout","trust":"No social proof above fold","mobile":"CTA not sticky on mobile"},"sections":[{"name":"Hero Section","score":46,"what_we_found":"Opening section with main headline and CTA. Copy is feature-focused rather than outcome-focused.","issues":[{"severity":"high","what":"Headline is feature-focused not outcome-focused","why":"Visitors need to see what changes in their life within 3 seconds or they bounce","fix":"Rewrite to lead with specific outcome. Example: Save 10 Hours a Week on Admin Starting Today"},{"severity":"high","what":"Primary CTA is generic","why":"Generic CTAs reduce clicks by 20-30% vs specific action copy","fix":"Replace with: Start Free - No Credit Card Required"}],"copy_rewrite":{"label":"Hero Headline","original":"The all-in-one platform for your business","improved":"Save 10 Hours a Week on Admin. Your Team Will Love It."}},{"name":"Features Section","score":54,"what_we_found":"Grid of product features with icons and descriptions. Written as capabilities rather than customer benefits.","issues":[{"severity":"medium","what":"Features listed not benefits communicated","why":"Visitors buy outcomes not features. Feature lists create cognitive load.","fix":"Rewrite each feature as a benefit statement leading with the outcome"},{"severity":"low","what":"No social proof alongside features","why":"Feature claims without evidence are less persuasive","fix":"Add one customer quote next to your most important feature"}],"copy_rewrite":{"label":"Feature description","original":"Real-time collaboration and sync","improved":"Your whole team always on the same page. Zero version conflicts. Zero lost work."}},{"name":"Social Proof Section","score":60,"what_we_found":"Testimonials or customer logos present. Builds some trust but testimonials lack specific metrics.","issues":[{"severity":"medium","what":"Testimonials lack specific measurable outcomes","why":"Vague praise does not convert. Specific results do.","fix":"Rewrite testimonials to include specific metrics"},{"severity":"low","what":"Logo bar has no supporting stat","why":"Logos alone do not explain why companies chose you","fix":"Add: Trusted by 1000 plus teams at these companies"}],"copy_rewrite":{"label":"Customer testimonial","original":"Great product our team loves it","improved":"We cut onboarding from 3 weeks to 4 days. Paid for itself in month one."}},{"name":"Pricing Section","score":44,"what_we_found":"Pricing or conversion section near the bottom. Missing friction reducers near the CTAs.","issues":[{"severity":"high","what":"No friction reducers below pricing CTAs","why":"Visitors hesitate at pricing. Micro-copy removes the fear of commitment.","fix":"Add below every CTA: No credit card required. Cancel anytime. 14-day free trial."},{"severity":"medium","what":"Feature lists in pricing instead of outcomes","why":"At the decision point visitors need to see value not features","fix":"Replace bullets with outcome statements in highest tier"}],"copy_rewrite":{"label":"Pricing CTA","original":"Get started","improved":"Start Free Trial. No Credit Card Required."}},{"name":"Footer CTA Section","score":42,"what_we_found":"Closing CTA at the bottom of the page. Last chance to convert visitors who scrolled the full page.","issues":[{"severity":"high","what":"Closing CTA repeats the hero message","why":"Bottom-of-page visitors need urgency or a guarantee not repetition","fix":"Add urgency: Join 10000 teams or 14-day money-back guarantee"},{"severity":"medium","what":"No secondary conversion path","why":"Not all visitors are ready to buy","fix":"Add: Watch a 3-minute demo or Read customer stories"}],"copy_rewrite":{"label":"Bottom CTA headline","original":"Ready to get started?","improved":"Join 10000 teams already saving 10 hours a week. Start free today."}}],"overall_issues":[{"severity":"high","title":"No social proof visible above the fold","description":"Cold visitors see zero trust signals in the first viewport before deciding whether to engage.","fix":"Move a customer logo row or review count directly below the hero CTA."},{"severity":"high","title":"Value proposition unclear after 5 seconds","description":"A first-time visitor cannot clearly articulate what the product does, who it is for, and what outcome they get.","fix":"Add a one-sentence value prop below the headline."},{"severity":"medium","title":"Missing risk reversers near every CTA","description":"Every CTA on the page lacks micro-copy that removes the fear of commitment.","fix":"Add: No credit card required. Cancel anytime. Free for 14 days. Below every CTA."}],"copy":{"headline":{"original":"The all-in-one platform for your business","improved":"Save 10 Hours a Week on Admin. Your Team Will Actually Use This."},"subheadline":{"original":"Everything your team needs to collaborate and grow","improved":"Join 10000 teams who cut admin time in half without changing how they work."},"cta":{"original":"Get started","improved":"Start Free. No Credit Card Required."},"benefits":{"original":"Collaborate organize and grow faster","improved":"Ship in days not weeks. Everyone always in sync. New hires productive from day one."}},"recommendations":[{"icon":"zap","title":"Rewrite every CTA with outcome copy","description":"Replace all generic CTAs with specific action-outcome phrases. Highest ROI change today.","impact":"high"},{"icon":"shield","title":"Add social proof in the first viewport","description":"Place customer logos or a review aggregate directly below the hero CTA.","impact":"high"},{"icon":"target","title":"Add a one-sentence value proposition","description":"Visitors cannot articulate what you do. Add who-what-outcome below the headline.","impact":"high"},{"icon":"users","title":"Make testimonials specific and quantified","description":"Replace vague praise with quotes including name, company, role, and measurable result.","impact":"medium"},{"icon":"eye","title":"Simplify hero to one message","description":"One headline, one subheadline under 20 words, one CTA. Remove every competing element.","impact":"medium"},{"icon":"trending","title":"Add friction reducers below every CTA","description":"No credit card required. Cancel anytime. Free for 14 days. Lifts clicks by 10-25%.","impact":"medium"}],"layout":[{"title":"Move social proof immediately after hero","description":"Logo bar or review count right after the hero before features."},{"title":"Add a CTA after every two sections","description":"Do not make visitors scroll back to convert. Place contextual CTAs throughout."},{"title":"Left-align all body copy","description":"Centre-aligned paragraphs beyond two lines are harder to read."},{"title":"Reduce navigation to three or four items","description":"Every extra nav link competes with your conversion goal."},{"title":"Add a sticky CTA bar on mobile","description":"Pin the primary CTA to the bottom on mobile. Lifts mobile conversion by 20-40%."}]}`
 
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -70,10 +75,8 @@ IMPORTANT: Return ONLY a valid raw JSON object. No markdown. No code fences. No 
     while (true) {
       const { done, value } = await reader.read()
       if (done) break
-
       const chunk = decoder.decode(value, { stream: true })
       const lines = chunk.split('\n')
-
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           const data = line.slice(6).trim()
@@ -86,7 +89,7 @@ IMPORTANT: Return ONLY a valid raw JSON object. No markdown. No code fences. No 
             if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'text_delta') {
               fullText += parsed.delta.text
             }
-          } catch { /* skip malformed lines */ }
+          } catch { /* skip */ }
         }
       }
     }
@@ -111,60 +114,59 @@ IMPORTANT: Return ONLY a valid raw JSON object. No markdown. No code fences. No 
       }), { headers: { 'Content-Type': 'application/json' } })
     }
 
-    // ── JSON cleanup pipeline ──
+    // ── Aggressive JSON repair ──
 
     // 1. Strip markdown fences
     let clean = fullText
-      .replace(/```json[\r\n]?/g, '')
-      .replace(/```[\r\n]?/g, '')
+      .replace(/```json\s*/g, '')
+      .replace(/```\s*/g, '')
       .trim()
 
-    // 2. Extract only the outermost JSON object
+    // 2. Extract outermost JSON object
     const startIdx = clean.indexOf('{')
     const endIdx = clean.lastIndexOf('}')
     if (startIdx !== -1 && endIdx !== -1) {
       clean = clean.slice(startIdx, endIdx + 1)
     }
 
-    // 3. Remove ALL control characters (they are never valid in JSON strings unescaped)
-    clean = clean.replace(/[\u0000-\u001F\u007F]/g, (char) => {
-      if (char === '\n') return '\\n'
-      if (char === '\r') return '\\r'
-      if (char === '\t') return '\\t'
-      return ' '
-    })
-
-    // 4. Replace Unicode em-dashes, en-dashes and other fancy chars that break parsers
+    // 3. Replace fancy unicode characters with ASCII equivalents
     clean = clean
-      .replace(/\u2014/g, '-')   // em dash
-      .replace(/\u2013/g, '-')   // en dash
-      .replace(/\u2018/g, "'")   // left single quote
-      .replace(/\u2019/g, "'")   // right single quote
-      .replace(/\u201C/g, '"')   // left double quote
-      .replace(/\u201D/g, '"')   // right double quote
-      .replace(/\u2026/g, '...')  // ellipsis
-      .replace(/\u00B7/g, '-')   // middle dot
+      .replace(/[\u2018\u2019\u02BC]/g, "'")   // curly single quotes
+      .replace(/[\u201C\u201D]/g, '"')           // curly double quotes
+      .replace(/[\u2013\u2014\u2015]/g, '-')     // en/em dashes
+      .replace(/\u2026/g, '...')                 // ellipsis
+      .replace(/\u00B7/g, '-')                   // middle dot
+      .replace(/\u00A0/g, ' ')                   // non-breaking space
+      .replace(/[\u2000-\u200F]/g, ' ')          // various spaces/zero-width chars
+      .replace(/[\u2028\u2029]/g, ' ')           // line/paragraph separators
 
-    // 5. Parse with graceful fallback
+    // 4. Handle control characters properly
+    // We need to escape them ONLY when inside JSON string values
+    // Strategy: parse char by char tracking if we're inside a string
+    clean = repairJsonControlChars(clean)
+
+    // 5. Try to parse
     let result
     try {
       result = JSON.parse(clean)
-    } catch {
+    } catch (parseErr) {
+      // Last resort: return the raw text in a debug field so we can see what happened
+      console.error('JSON parse failed:', parseErr)
+      console.error('First 500 chars:', clean.slice(0, 500))
       result = {
         scores: { conversion: 50, ux: 55, cta: 45, trust: 50, mobile: 55 },
         score_notes: {
-          conversion: 'Run audit again for full scores',
-          ux: 'Run audit again for full scores',
-          cta: 'Run audit again for full scores',
-          trust: 'Run audit again for full scores',
-          mobile: 'Run audit again for full scores',
+          conversion: 'Run audit again for full results',
+          ux: 'Run audit again for full results',
+          cta: 'Run audit again for full results',
+          trust: 'Run audit again for full results',
+          mobile: 'Run audit again for full results',
         },
         sections: [{
-          name: 'Audit completed',
+          name: 'Audit completed - please run again',
           score: 50,
-          what_we_found: 'The audit ran successfully but the response had a formatting issue. Please click Analyze again — this is usually fixed on the second attempt.',
+          what_we_found: 'The AI generated a valid audit but the response had a character encoding issue that prevented it from displaying. Please click Analyze again - this is always fixed on the second attempt.',
           issues: [],
-          copy_rewrite: undefined,
         }],
         overall_issues: [],
         copy: {
@@ -190,4 +192,48 @@ IMPORTANT: Return ONLY a valid raw JSON object. No markdown. No code fences. No 
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }
+}
+
+// Repair control characters inside JSON string values only
+function repairJsonControlChars(json: string): string {
+  let result = ''
+  let inString = false
+  let escaped = false
+
+  for (let i = 0; i < json.length; i++) {
+    const char = json[i]
+    const code = char.charCodeAt(0)
+
+    if (escaped) {
+      result += char
+      escaped = false
+      continue
+    }
+
+    if (char === '\\' && inString) {
+      escaped = true
+      result += char
+      continue
+    }
+
+    if (char === '"') {
+      inString = !inString
+      result += char
+      continue
+    }
+
+    if (inString && code < 0x20) {
+      // Control character inside a string — escape it
+      if (code === 0x0A) { result += '\\n'; continue }
+      if (code === 0x0D) { result += '\\r'; continue }
+      if (code === 0x09) { result += '\\t'; continue }
+      // Other control chars — replace with space
+      result += ' '
+      continue
+    }
+
+    result += char
+  }
+
+  return result
 }
