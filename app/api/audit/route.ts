@@ -49,7 +49,7 @@ Return ONLY a valid raw JSON object. No markdown. No code fences. Nothing before
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5',
-        max_tokens: isCustom ? 400 : 3000,
+        max_tokens: isCustom ? 400 : 6000,
         stream: true,
         messages: [{ role: 'user', content: prompt }],
       }),
