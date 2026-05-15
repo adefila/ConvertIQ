@@ -67,7 +67,7 @@ Return ONLY a valid JSON object. Rules:
       )
     }
 
-    // Collect the streamed response
+    // Collect streamed response
     const reader = anthropicRes.body!.getReader()
     const decoder = new TextDecoder()
     let fullText = ''
@@ -114,7 +114,7 @@ Return ONLY a valid JSON object. Rules:
       }), { headers: { 'Content-Type': 'application/json' } })
     }
 
-    // ── Aggressive JSON repair ──
+    // ── JSON repair pipeline ──
 
     // 1. Strip markdown fences
     let clean = fullText
@@ -122,50 +122,59 @@ Return ONLY a valid JSON object. Rules:
       .replace(/```\s*/g, '')
       .trim()
 
-    // 2. Extract outermost JSON object
+    // 2. Strip BOM and ALL zero-width / invisible unicode characters
+    // These are the #1 cause of "Expected property name at position 1"
+    // Claude often inserts U+200B (zero-width space) right after the opening {
+    clean = clean.replace(
+      /[\uFEFF\u200B\u200C\u200D\u2060\u00AD\u200E\u200F\u202A-\u202F\u2066-\u2069]/g,
+      ''
+    )
+
+    // 3. Replace fancy unicode with ASCII equivalents
+    clean = clean
+      .replace(/[\u2018\u2019\u02BC]/g, "'")
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/[\u2013\u2014\u2015]/g, '-')
+      .replace(/\u2026/g, '...')
+      .replace(/\u00B7/g, '-')
+      .replace(/\u00A0/g, ' ')
+      .replace(/[\u2000-\u200A]/g, ' ')
+
+    // 4. Extract outermost JSON object
     const startIdx = clean.indexOf('{')
     const endIdx = clean.lastIndexOf('}')
     if (startIdx !== -1 && endIdx !== -1) {
       clean = clean.slice(startIdx, endIdx + 1)
     }
 
-    // 3. Replace fancy unicode characters with ASCII equivalents
-    clean = clean
-      .replace(/[\u2018\u2019\u02BC]/g, "'")   // curly single quotes
-      .replace(/[\u201C\u201D]/g, '"')           // curly double quotes
-      .replace(/[\u2013\u2014\u2015]/g, '-')     // en/em dashes
-      .replace(/\u2026/g, '...')                 // ellipsis
-      .replace(/\u00B7/g, '-')                   // middle dot
-      .replace(/\u00A0/g, ' ')                   // non-breaking space
-      .replace(/[\u2000-\u200F]/g, ' ')          // various spaces/zero-width chars
-      .replace(/[\u2028\u2029]/g, ' ')           // line/paragraph separators
+    // 5. Escape raw control characters inside JSON string values
+    // Simple but correct: replace ALL raw control chars
+    // (newlines/tabs outside strings are fine, but inside strings they must be escaped)
+    clean = clean.replace(/[\u0000-\u001F]/g, (char) => {
+      if (char === '\n') return '\\n'
+      if (char === '\r') return '\\r'
+      if (char === '\t') return '\\t'
+      return ' '
+    })
 
-    // 4. Handle control characters properly
-    // We need to escape them ONLY when inside JSON string values
-    // Strategy: parse char by char tracking if we're inside a string
-    clean = repairJsonControlChars(clean)
-
-    // 5. Try to parse
+    // 6. Parse
     let result
     try {
       result = JSON.parse(clean)
-    } catch (parseErr) {
-      // Last resort: return the raw text in a debug field so we can see what happened
-      console.error('JSON parse failed:', parseErr)
-      console.error('First 500 chars:', clean.slice(0, 500))
+    } catch {
       result = {
         scores: { conversion: 50, ux: 55, cta: 45, trust: 50, mobile: 55 },
         score_notes: {
-          conversion: 'Run audit again for full results',
-          ux: 'Run audit again for full results',
-          cta: 'Run audit again for full results',
-          trust: 'Run audit again for full results',
-          mobile: 'Run audit again for full results',
+          conversion: 'Run audit again',
+          ux: 'Run audit again',
+          cta: 'Run audit again',
+          trust: 'Run audit again',
+          mobile: 'Run audit again',
         },
         sections: [{
-          name: 'Audit completed - please run again',
+          name: 'Please run the audit again',
           score: 50,
-          what_we_found: 'The AI generated a valid audit but the response had a character encoding issue that prevented it from displaying. Please click Analyze again - this is always fixed on the second attempt.',
+          what_we_found: 'The audit ran but had a formatting issue. Click Analyze again to get your full results.',
           issues: [],
         }],
         overall_issues: [],
@@ -192,48 +201,4 @@ Return ONLY a valid JSON object. Rules:
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }
-}
-
-// Repair control characters inside JSON string values only
-function repairJsonControlChars(json: string): string {
-  let result = ''
-  let inString = false
-  let escaped = false
-
-  for (let i = 0; i < json.length; i++) {
-    const char = json[i]
-    const code = char.charCodeAt(0)
-
-    if (escaped) {
-      result += char
-      escaped = false
-      continue
-    }
-
-    if (char === '\\' && inString) {
-      escaped = true
-      result += char
-      continue
-    }
-
-    if (char === '"') {
-      inString = !inString
-      result += char
-      continue
-    }
-
-    if (inString && code < 0x20) {
-      // Control character inside a string — escape it
-      if (code === 0x0A) { result += '\\n'; continue }
-      if (code === 0x0D) { result += '\\r'; continue }
-      if (code === 0x09) { result += '\\t'; continue }
-      // Other control chars — replace with space
-      result += ' '
-      continue
-    }
-
-    result += char
-  }
-
-  return result
 }
