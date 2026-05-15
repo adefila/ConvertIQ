@@ -118,6 +118,14 @@ Return ONLY a valid raw JSON object. No markdown. No code fences. Nothing before
     const end = clean.lastIndexOf('}')
     if (start !== -1 && end !== -1) clean = clean.slice(start, end + 1)
 
+    // Sanitize bad control characters that break JSON.parse
+    clean = clean.replace(/[\u0000-\u001F\u007F]/g, (char) => {
+      if (char === '\n') return '\\n'
+      if (char === '\r') return '\\r'
+      if (char === '\t') return '\\t'
+      return ''
+    })
+
     const result = JSON.parse(clean)
     return new Response(
       JSON.stringify({ ok: true, result }),
