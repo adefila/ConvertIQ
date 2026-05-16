@@ -23,10 +23,12 @@ export async function POST(req: NextRequest) {
       ? `Rewrite this copy to be outcome-focused for ${url}. Return ONLY the rewritten copy:\n\n${copyText}`
       : `CRO audit of ${url}.${content ? ` Page content:\n${content}` : ' Use your knowledge of this site.'}
 
-Return ONLY valid JSON, no markdown, starting with { ending with }:
-{"scores":{"conversion":52,"ux":65,"cta":44,"trust":55,"mobile":62},"score_notes":{"conversion":"one line note","ux":"one line note","cta":"one line note","trust":"one line note","mobile":"one line note"},"sections":[{"name":"Section name","score":50,"what_we_found":"2 sentence description of what is on this section","issues":[{"severity":"high","what":"issue title","why":"why it hurts conversion","fix":"exact fix with example copy"}],"copy_rewrite":{"label":"what this copy is","original":"exact copy from page","improved":"rewritten version"}}],"overall_issues":[{"severity":"high","title":"issue","description":"description","fix":"fix"}],"copy":{"headline":{"original":"exact h1","improved":"rewrite"},"subheadline":{"original":"exact subheadline","improved":"rewrite"},"cta":{"original":"exact cta","improved":"rewrite"},"benefits":{"original":"exact benefits copy","improved":"rewrite"}},"recommendations":[{"icon":"zap","title":"title","description":"description","impact":"high"}],"layout":[{"title":"change","description":"why"}]}
+CRITICAL: Return ONLY valid compact JSON (no whitespace/indentation between fields). Start with { end with }. No markdown.
 
-Rules: 4-6 sections, 6 recommendations, 5 layout items, 3 overall issues. Be specific and quote real copy.`
+Keep ALL string values SHORT (under 20 words each). Use this exact structure:
+{"scores":{"conversion":52,"ux":65,"cta":44,"trust":55,"mobile":62},"score_notes":{"conversion":"short note","ux":"short note","cta":"short note","trust":"short note","mobile":"short note"},"sections":[{"name":"Hero","score":50,"what_we_found":"short 1-2 sentence description","issues":[{"severity":"high","what":"short issue","why":"short reason","fix":"short fix"}],"copy_rewrite":{"label":"label","original":"original copy","improved":"improved copy"}}],"overall_issues":[{"severity":"high","title":"title","description":"short desc","fix":"short fix"}],"copy":{"headline":{"original":"h1 text","improved":"rewrite"},"subheadline":{"original":"sub text","improved":"rewrite"},"cta":{"original":"cta text","improved":"rewrite"},"benefits":{"original":"benefits text","improved":"rewrite"}},"recommendations":[{"icon":"zap","title":"title","description":"short desc","impact":"high"}],"layout":[{"title":"title","description":"short desc"}]}
+
+Include: 4 sections, 2 issues per section, 3 overall issues, 6 recommendations, 5 layout items.`
 
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -37,7 +39,7 @@ Rules: 4-6 sections, 6 recommendations, 5 layout items, 3 overall issues. Be spe
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5',
-        max_tokens: isCustom ? 400 : 4000,
+        max_tokens: isCustom ? 400 : 5000,
         stream: true,
         messages: [{ role: 'user', content: prompt }],
       }),
