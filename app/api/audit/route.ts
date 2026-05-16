@@ -97,6 +97,8 @@ Include: 4 sections, 2 issues per section, 3 overall issues, 6 recommendations, 
           layout: [],
         },
       })
+
+
     }
 
     let clean = fullText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim()
