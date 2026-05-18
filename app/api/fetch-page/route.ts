@@ -9,22 +9,14 @@ export async function POST(req: NextRequest) {
     url = body.url ?? ''
     if (!url) return NextResponse.json({ content: 'No URL', method: 'error' })
 
+    // ── Screenshot URL (thum.io - 1000 free/month, no signup needed) ──
+    // Correct format: /get/width/1440/crop/900/noanimate/URL
+    const screenshotUrl = `https://image.thum.io/get/width/1440/crop/900/noanimate/${url}`
+
     let content = ''
     let method = ''
-    let screenshotUrl = ''
 
-    // ── Screenshot (runs in parallel with text fetch) ──
-    // ScreenshotOne: 100 free/month, full-page, renders JS
-    if (process.env.SCREENSHOT_API_KEY) {
-      screenshotUrl = `https://api.screenshotone.com/take?url=${encodeURIComponent(url)}&access_key=${process.env.SCREENSHOT_API_KEY}&full_page=true&format=jpg&image_quality=80&viewport_width=1440&viewport_height=900&block_cookie_banners=true&block_ads=true`
-    } else {
-      // Free fallback: thumbnail.ws — no key needed, basic screenshot
-      screenshotUrl = `https://image.thum.io/get/width/1440/crop/900/noanimate/${url}`
-    }
-
-    // ── Text content fetch ──
-
-    // Strategy 1: Jina with API key — renders full JS, gets ALL sections navbar to footer
+    // ── Strategy 1: Jina with API key (best — renders full JS, all sections) ──
     if (process.env.JINA_API_KEY) {
       try {
         const res = await fetch(`https://r.jina.ai/${url}`, {
@@ -33,6 +25,7 @@ export async function POST(req: NextRequest) {
             'Accept': 'text/plain',
             'X-Return-Format': 'text',
             'X-Timeout': '20',
+            'X-No-Cache': 'true',
           },
           signal: AbortSignal.timeout(22000),
         })
@@ -46,7 +39,7 @@ export async function POST(req: NextRequest) {
       } catch { /* fall through */ }
     }
 
-    // Strategy 2: Jina free — still renders JS
+    // ── Strategy 2: Jina free (renders JS, slower) ──
     if (!content) {
       try {
         const res = await fetch(`https://r.jina.ai/${url}`, {
@@ -66,7 +59,7 @@ export async function POST(req: NextRequest) {
       } catch { /* fall through */ }
     }
 
-    // Strategy 3: AllOrigins proxy
+    // ── Strategy 3: AllOrigins proxy ──
     if (!content) {
       try {
         const res = await fetch(
@@ -76,27 +69,28 @@ export async function POST(req: NextRequest) {
         if (res.ok) {
           const data = await res.json() as { contents?: string }
           if (data.contents && data.contents.length > 300) {
-            content = extractFromHTML(data.contents)
+            content = extractAll(data.contents)
             method = 'allorigins'
           }
         }
       } catch { /* fall through */ }
     }
 
-    // Strategy 4: Direct HTML fetch
+    // ── Strategy 4: Direct HTML fetch ──
     if (!content) {
       try {
         const res = await fetch(url, {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
           },
           signal: AbortSignal.timeout(8000),
         })
         if (res.ok) {
           const html = await res.text()
           if (html && html.length > 300) {
-            content = extractFromHTML(html)
+            content = extractAll(html)
             method = 'direct'
           }
         }
@@ -105,7 +99,7 @@ export async function POST(req: NextRequest) {
 
     if (!content || content.length < 200) {
       return NextResponse.json({
-        content: `Website: ${url}. Could not fetch full page content. Analyze based on domain knowledge and what you know about this brand and industry.`,
+        content: `Website: ${url}. Could not fetch full page. Analyze based on domain knowledge and what you know about this brand.`,
         method: 'url-only',
         screenshotUrl,
         length: 0,
@@ -113,7 +107,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({
-      content: content.slice(0, 12000),
+      content: content.slice(0, 15000),
       method,
       screenshotUrl,
       length: content.length,
@@ -130,51 +124,98 @@ export async function POST(req: NextRequest) {
   }
 }
 
-function extractFromHTML(html: string): string {
+// Extract EVERY piece of text from HTML — word for word
+function extractAll(html: string): string {
+  // Remove non-content elements
   let clean = html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
     .replace(/<svg\b[^<]*(?:(?!<\/svg>)<[^<]*)*<\/svg>/gi, '')
     .replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, '')
+    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
     .replace(/<!--[\s\S]*?-->/g, '')
 
+  // Metadata
   const title = clean.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.replace(/<[^>]+>/g, '').trim() ?? ''
-  const desc = clean.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)/i)?.[1] ?? ''
+  const desc =
+    clean.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)/i)?.[1] ??
+    clean.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)/i)?.[1] ?? ''
+  const ogTitle = clean.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)/i)?.[1] ?? ''
 
+  // ALL headings — every single one in page order
   const headings: string[] = []
   for (const m of clean.matchAll(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi)) {
     const text = m[2].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
     if (text) headings.push(`H${m[1]}: ${text}`)
   }
 
-  const btns: string[] = []
-  for (const m of clean.matchAll(/<(?:button|a)\b[^>]*>([\s\S]*?)<\/(?:button|a)>/gi)) {
+  // ALL links and buttons (every CTA, nav item, footer link)
+  const links: string[] = []
+  for (const m of clean.matchAll(/<a\b[^>]*>([\s\S]*?)<\/a>/gi)) {
     const text = m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
-    if (text && text.length > 1 && text.length < 100) btns.push(text)
+    if (text && text.length > 1 && text.length < 120) links.push(text)
   }
 
+  // ALL buttons
+  const buttons: string[] = []
+  for (const m of clean.matchAll(/<button\b[^>]*>([\s\S]*?)<\/button>/gi)) {
+    const text = m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
+    if (text && text.length > 1) buttons.push(text)
+  }
+
+  // ALL paragraphs
   const paras: string[] = []
-  for (const m of clean.matchAll(/<(?:p|li)\b[^>]*>([\s\S]*?)<\/(?:p|li)>/gi)) {
+  for (const m of clean.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)) {
     const text = m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
-    if (text && text.length > 15) paras.push(text)
+    if (text && text.length > 5) paras.push(text)
   }
 
-  const bodyText = clean.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+  // ALL list items
+  const listItems: string[] = []
+  for (const m of clean.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi)) {
+    const text = m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
+    if (text && text.length > 5) listItems.push(`• ${text}`)
+  }
 
-  return [
-    `=== PAGE: ${title} ===`,
-    `META: ${desc}`,
+  // ALL spans and divs with text (catches labels, badges, tags)
+  const spans: string[] = []
+  for (const m of clean.matchAll(/<span\b[^>]*>([^<]{3,100})<\/span>/gi)) {
+    const text = m[1].replace(/\s+/g, ' ').trim()
+    if (text) spans.push(text)
+  }
+
+  // Full body text — catches anything missed above
+  const bodyText = clean
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  const sections = [
+    `TITLE: ${title}`,
+    ogTitle && ogTitle !== title ? `OG TITLE: ${ogTitle}` : '',
+    `META DESCRIPTION: ${desc}`,
     '',
-    '=== HEADINGS (navbar to footer, in order) ===',
+    '=== ALL HEADINGS (exact, in page order) ===',
     headings.join('\n'),
     '',
-    '=== ALL CTAs & BUTTONS ===',
-    [...new Set(btns)].join(' | '),
+    '=== ALL NAVIGATION & LINKS ===',
+    [...new Set(links)].join(' | '),
     '',
-    '=== ALL TEXT CONTENT ===',
+    '=== ALL BUTTONS & CTAs ===',
+    [...new Set(buttons)].join(' | '),
+    '',
+    '=== ALL PARAGRAPHS (exact text) ===',
     paras.join('\n'),
     '',
-    '=== FULL PAGE TEXT ===',
-    bodyText.slice(0, 5000),
-  ].join('\n')
+    '=== ALL LIST ITEMS ===',
+    listItems.join('\n'),
+    '',
+    '=== LABELS, BADGES, TAGS ===',
+    [...new Set(spans)].slice(0, 50).join(' | '),
+    '',
+    '=== COMPLETE PAGE TEXT (word for word) ===',
+    bodyText,
+  ].filter(Boolean)
+
+  return sections.join('\n')
 }
