@@ -7,49 +7,74 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as { url?: string }
     url = body.url ?? ''
-
-    if (!url) {
-      return NextResponse.json({ content: 'No URL provided', method: 'error' })
-    }
+    if (!url) return NextResponse.json({ content: 'No URL', method: 'error' })
 
     let content = ''
     let method = ''
+    let screenshotUrl = ''
 
-    // Strategy 1: Jina Reader — renders JS, best for React/Next.js/Framer/Webflow sites
-    try {
-      const jinaRes = await fetch(`https://r.jina.ai/${url}`, {
-        headers: {
-          'Accept': 'text/plain',
-          'User-Agent': 'Mozilla/5.0 (compatible; ConvertIQ/1.0)',
-          'X-Timeout': '15',
-          ...(process.env.JINA_API_KEY ? { 'Authorization': `Bearer ${process.env.JINA_API_KEY}` } : {}),
-        },
-        signal: AbortSignal.timeout(15000),
-      })
-      if (jinaRes.ok) {
-        const text = await jinaRes.text()
-        const trimmed = text.trim()
-        if (
-          trimmed.length > 500 &&
-          !trimmed.startsWith('<!DOCTYPE') &&
-          !trimmed.startsWith('<html') &&
-          !trimmed.includes('Error fetching')
-        ) {
-          content = trimmed
-          method = 'jina'
+    // ── Screenshot (runs in parallel with text fetch) ──
+    // ScreenshotOne: 100 free/month, full-page, renders JS
+    if (process.env.SCREENSHOT_API_KEY) {
+      screenshotUrl = `https://api.screenshotone.com/take?url=${encodeURIComponent(url)}&access_key=${process.env.SCREENSHOT_API_KEY}&full_page=true&format=jpg&image_quality=80&viewport_width=1440&viewport_height=900&block_cookie_banners=true&block_ads=true`
+    } else {
+      // Free fallback: thumbnail.ws — no key needed, basic screenshot
+      screenshotUrl = `https://image.thum.io/get/width/1440/crop/900/noanimate/${url}`
+    }
+
+    // ── Text content fetch ──
+
+    // Strategy 1: Jina with API key — renders full JS, gets ALL sections navbar to footer
+    if (process.env.JINA_API_KEY) {
+      try {
+        const res = await fetch(`https://r.jina.ai/${url}`, {
+          headers: {
+            'Authorization': `Bearer ${process.env.JINA_API_KEY}`,
+            'Accept': 'text/plain',
+            'X-Return-Format': 'text',
+            'X-Timeout': '20',
+          },
+          signal: AbortSignal.timeout(22000),
+        })
+        if (res.ok) {
+          const text = await res.text()
+          if (text && text.length > 500 && !text.startsWith('<!DOCTYPE')) {
+            content = text
+            method = 'jina-auth'
+          }
         }
-      }
-    } catch { /* fall through */ }
+      } catch { /* fall through */ }
+    }
 
-    // Strategy 2: AllOrigins proxy — good for server-rendered sites
+    // Strategy 2: Jina free — still renders JS
     if (!content) {
       try {
-        const aoRes = await fetch(
+        const res = await fetch(`https://r.jina.ai/${url}`, {
+          headers: {
+            'Accept': 'text/plain',
+            'X-Timeout': '15',
+          },
+          signal: AbortSignal.timeout(18000),
+        })
+        if (res.ok) {
+          const text = await res.text()
+          if (text && text.length > 300 && !text.startsWith('<!DOCTYPE')) {
+            content = text
+            method = 'jina-free'
+          }
+        }
+      } catch { /* fall through */ }
+    }
+
+    // Strategy 3: AllOrigins proxy
+    if (!content) {
+      try {
+        const res = await fetch(
           `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
           { signal: AbortSignal.timeout(8000) }
         )
-        if (aoRes.ok) {
-          const data = await aoRes.json() as { contents?: string }
+        if (res.ok) {
+          const data = await res.json() as { contents?: string }
           if (data.contents && data.contents.length > 300) {
             content = extractFromHTML(data.contents)
             method = 'allorigins'
@@ -58,19 +83,18 @@ export async function POST(req: NextRequest) {
       } catch { /* fall through */ }
     }
 
-    // Strategy 3: Direct fetch — works for simple HTML sites
+    // Strategy 4: Direct HTML fetch
     if (!content) {
       try {
-        const directRes = await fetch(url, {
+        const res = await fetch(url, {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept': 'text/html,application/xhtml+xml,*/*;q=0.8',
           },
           signal: AbortSignal.timeout(8000),
         })
-        if (directRes.ok) {
-          const html = await directRes.text()
+        if (res.ok) {
+          const html = await res.text()
           if (html && html.length > 300) {
             content = extractFromHTML(html)
             method = 'direct'
@@ -79,97 +103,78 @@ export async function POST(req: NextRequest) {
       } catch { /* fall through */ }
     }
 
-    // Always return JSON — Claude will analyze from URL if no content
     if (!content || content.length < 200) {
       return NextResponse.json({
-        content: `Website URL: ${url}\n\nNote: Live page content could not be fetched (the site likely uses JavaScript rendering — React, Next.js, Framer, Webflow, etc). Please analyze this website based on:\n1. The domain name and URL structure\n2. What type of business this appears to be\n3. Common CRO patterns and issues for this industry\n4. Your knowledge of this specific brand if known\nBe transparent that you are inferring rather than reading live content, but still give specific actionable advice.`,
+        content: `Website: ${url}. Could not fetch full page content. Analyze based on domain knowledge and what you know about this brand and industry.`,
         method: 'url-only',
+        screenshotUrl,
         length: 0,
       })
     }
 
     return NextResponse.json({
-      content: content.slice(0, 10000),
+      content: content.slice(0, 12000),
       method,
+      screenshotUrl,
       length: content.length,
     })
 
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
     return NextResponse.json({
-      content: `Website: ${url}. Could not fetch. Analyze based on domain knowledge.`,
+      content: `Website: ${url}. Analyze based on domain knowledge.`,
       method: 'error',
+      screenshotUrl: '',
       error: msg,
     })
   }
 }
 
 function extractFromHTML(html: string): string {
-  // Remove all noise
   let clean = html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
     .replace(/<svg\b[^<]*(?:(?!<\/svg>)<[^<]*)*<\/svg>/gi, '')
     .replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, '')
-    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
     .replace(/<!--[\s\S]*?-->/g, '')
 
-  // Page metadata
-  const title = clean.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]
-    ?.replace(/<[^>]+>/g, '').trim() ?? ''
-  const metaDesc =
-    clean.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)/i)?.[1] ??
-    clean.match(/<meta[^>]+content=["']([^"']{20,300})["'][^>]+name=["']description/i)?.[1] ??
-    clean.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)/i)?.[1] ?? ''
-  const ogTitle = clean.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)/i)?.[1] ?? ''
+  const title = clean.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.replace(/<[^>]+>/g, '').trim() ?? ''
+  const desc = clean.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)/i)?.[1] ?? ''
 
-  // All headings in page order
   const headings: string[] = []
   for (const m of clean.matchAll(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi)) {
     const text = m[2].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
-    if (text && text.length > 2 && text.length < 300) {
-      headings.push(`H${m[1]}: ${text}`)
-    }
+    if (text) headings.push(`H${m[1]}: ${text}`)
   }
 
-  // All button and link text (CTAs)
-  const ctaSet = new Set<string>()
+  const btns: string[] = []
   for (const m of clean.matchAll(/<(?:button|a)\b[^>]*>([\s\S]*?)<\/(?:button|a)>/gi)) {
     const text = m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
-    if (text && text.length > 1 && text.length < 100) ctaSet.add(text)
+    if (text && text.length > 1 && text.length < 100) btns.push(text)
   }
 
-  // Paragraphs and list items — the actual copy
   const paras: string[] = []
-  for (const m of clean.matchAll(/<(?:p|li|span|div)\b[^>]*>([\s\S]*?)<\/(?:p|li|span|div)>/gi)) {
+  for (const m of clean.matchAll(/<(?:p|li)\b[^>]*>([\s\S]*?)<\/(?:p|li)>/gi)) {
     const text = m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
-    if (text && text.length > 30 && text.length < 600) {
-      paras.push(text)
-    }
+    if (text && text.length > 15) paras.push(text)
   }
 
-  // Full body text for context
-  const bodyText = clean
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
+  const bodyText = clean.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
 
   return [
-    `=== PAGE METADATA ===`,
-    `TITLE: ${title}`,
-    ogTitle && ogTitle !== title ? `OG TITLE: ${ogTitle}` : '',
-    `META DESCRIPTION: ${metaDesc}`,
+    `=== PAGE: ${title} ===`,
+    `META: ${desc}`,
     '',
-    `=== HEADINGS (in page order) ===`,
-    headings.slice(0, 30).join('\n'),
+    '=== HEADINGS (navbar to footer, in order) ===',
+    headings.join('\n'),
     '',
-    `=== ALL CTA & BUTTON TEXT ===`,
-    [...ctaSet].slice(0, 30).join(' | '),
+    '=== ALL CTAs & BUTTONS ===',
+    [...new Set(btns)].join(' | '),
     '',
-    `=== COPY & PARAGRAPHS ===`,
-    paras.slice(0, 30).join('\n'),
+    '=== ALL TEXT CONTENT ===',
+    paras.join('\n'),
     '',
-    `=== FULL PAGE TEXT ===`,
-    bodyText.slice(0, 4000),
-  ].filter(Boolean).join('\n')
+    '=== FULL PAGE TEXT ===',
+    bodyText.slice(0, 5000),
+  ].join('\n')
 }
