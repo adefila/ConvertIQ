@@ -29,7 +29,46 @@ interface SavedAudit { url: string; display: string; data: AuditResult; overall:
 interface GeneratedCopySection { name: string; copy?: string; headline?: string; subheadline?: string; cta_primary?: string; cta_secondary?: string; body?: string; items?: Record<string, string>[]; steps?: Record<string, string>[]; tiers?: Record<string, unknown>[]; guarantee?: string; cta?: string; seo_note?: string }
 interface GeneratedCopy { meta: { title: string; description: string }; sections: GeneratedCopySection[] }
 
-const TTL = 15 * 24 * 60 * 60 * 1000
+interface SavedCopy { form: typeof genFormDefault; data: GeneratedCopy; conversionScore: number; ts: number }
+
+const genFormDefault = { projectName: '', industry: '', targetAudience: '', mainOffer: '', keyBenefits: '', tone: 'professional', primaryKeyword: '', secondaryKeywords: '' }
+
+function loadSavedCopies(): SavedCopy[] {
+  try {
+    const r = localStorage.getItem('ciq_copies_v1')
+    if (!r) return []
+    return (JSON.parse(r) as SavedCopy[]).filter(c => Date.now() - c.ts < TTL)
+  } catch { return [] }
+}
+
+function saveCopyResult(entry: SavedCopy) {
+  const list = loadSavedCopies().filter(c => c.form.projectName !== entry.form.projectName)
+  list.unshift(entry)
+  try { localStorage.setItem('ciq_copies_v1', JSON.stringify(list.slice(0, 10))) } catch {}
+}
+
+function calcConversionScore(gen: GeneratedCopy): number {
+  let score = 50
+  if (gen.meta?.title) score += 5
+  if (gen.meta?.description) score += 5
+  const secs = gen.sections ?? []
+  if (secs.find(s => s.name?.toLowerCase().includes('hero'))) score += 8
+  if (secs.find(s => s.cta_primary || s.cta)) score += 7
+  if (secs.find(s => s.name?.toLowerCase().includes('testimonial') || s.name?.toLowerCase().includes('social'))) score += 8
+  if (secs.find(s => s.guarantee)) score += 5
+  if (secs.find(s => s.name?.toLowerCase().includes('faq'))) score += 5
+  if (secs.find(s => s.name?.toLowerCase().includes('pricing'))) score += 5
+  if (secs.length >= 8) score += 5
+  if (secs.find(s => s.seo_note)) score += 7
+  return Math.min(99, score)
+}
+
+function getConversionNote(score: number): string {
+  if (score >= 85) return 'Excellent — strong conversion architecture'
+  if (score >= 70) return 'Good — a few tweaks will push it higher'
+  if (score >= 55) return 'Average — missing key conversion elements'
+  return 'Needs work — add trust signals and stronger CTAs'
+}
 
 function loadAudits(): SavedAudit[] {
   try {
@@ -172,7 +211,7 @@ const PREVIEWS = [
 ]
 
 export default function Page() {
-  const [screen, setScreen] = useState<'home' | 'analyzing' | 'results'>('home')
+  const [screen, setScreen] = useState<'home' | 'analyzing' | 'results' | 'generate'>('home')
   const [urlVal, setUrlVal] = useState('')
   const [error, setError] = useState('')
   const [progress, setProgress] = useState(0)
@@ -379,12 +418,18 @@ export default function Page() {
         <div className={styles.brand} onClick={() => setScreen('home')}>
           <div className={styles.brandDot} />ConvertIQ
         </div>
-        <button className={styles.btnGhost} onClick={() => { setSavedAudits(loadAudits()); setShowHistory(true) }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-          </svg>
-          Saved Audits
-        </button>
+        <div className={styles.navRight}>
+          <button className={styles.btnGhost} onClick={() => setScreen('generate')} style={{ gap: 6 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Generate Copy
+          </button>
+          <button className={styles.btnGhost} onClick={() => { setSavedAudits(loadAudits()); setShowHistory(true) }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+            </svg>
+            Saved Audits
+          </button>
+        </div>
       </nav>
 
       {screen === 'home' && (
@@ -538,7 +583,6 @@ export default function Page() {
                 ['copy', 'Copy Rewriter', sectionCopyItems.length || null],
                 ['recs', 'Recommendations', null],
                 ['layout', 'Layout Blueprint', null],
-                ['generate', '✦ Generate Copy', null],
               ] as [string, string, number | null][]).map(([id, label, count]) => (
                 <button key={id} className={`${styles.tabBtn} ${tab === id ? styles.tabOn : ''}`} onClick={() => setTab(id)}>
                   {label}{count != null && <span className={styles.tabBadge}>{count}</span>}
@@ -686,47 +730,73 @@ export default function Page() {
             </div>
           )}
 
-          {/* GENERATE FULL COPY TAB */}
-          {tab === 'generate' && (
-            <div className={styles.panel}>
-              <div className={styles.genWrap}>
-                <div className={styles.genHero}>
-                  <div className={styles.genHeroTitle}>✦ Generate Full Website Copy</div>
-                  <div className={styles.genHeroSub}>Enter your project details and get word-for-word copy for every section of a high-converting landing page — with SEO baked in.</div>
+          {/* GENERATE COPY tab removed — now a standalone screen via nav */}
+        </div>
+      )}
+
+      {/* ── GENERATE COPY SCREEN ── */}
+      {screen === 'generate' && (
+        <div className={styles.generateScreen}>
+          <div className={styles.generateInner}>
+
+            {/* Header */}
+            <div className={styles.generateHeader}>
+              <button className={styles.generateBack} onClick={() => setScreen('home')}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                Back
+              </button>
+              <div className={styles.generateTitle}>
+                <div className={styles.generateTitleIcon}>✦</div>
+                <div>
+                  <div className={styles.generateTitleText}>Generate Full Website Copy</div>
+                  <div className={styles.generateTitleSub}>Word-for-word copy for every section — SEO optimised and conversion-ready</div>
                 </div>
-                <div className={styles.genForm}>
+              </div>
+            </div>
+
+            {!genResult ? (
+              <div className={styles.generateFormWrap}>
+                {/* Form */}
+                <div className={styles.generateForm}>
+                  <div className={styles.generateFormTitle}>Project Details</div>
+
                   <div className={styles.genRow}>
                     <div className={styles.genField}>
-                      <label className={styles.genLabel}>Project / Brand Name *</label>
-                      <input className={styles.genInput} placeholder="e.g. ConvertIQ" value={genForm.projectName} onChange={e => setGenForm(f => ({ ...f, projectName: e.target.value }))} />
+                      <label className={styles.genLabel}>Project / Brand Name <span style={{color:'var(--red)'}}>*</span></label>
+                      <input className={`${styles.genInput} ${genForm.projectName ? styles.genInputFilled : ''}`} placeholder="e.g. FlowPilot" value={genForm.projectName} onChange={e => setGenForm(f => ({ ...f, projectName: e.target.value }))} />
                     </div>
                     <div className={styles.genField}>
                       <label className={styles.genLabel}>Industry</label>
-                      <input className={styles.genInput} placeholder="e.g. SaaS, E-commerce, Agency" value={genForm.industry} onChange={e => setGenForm(f => ({ ...f, industry: e.target.value }))} />
+                      <input className={`${styles.genInput} ${genForm.industry ? styles.genInputFilled : ''}`} placeholder="e.g. SaaS, Agency, E-commerce" value={genForm.industry} onChange={e => setGenForm(f => ({ ...f, industry: e.target.value }))} />
                     </div>
                   </div>
+
                   <div className={styles.genField}>
                     <label className={styles.genLabel}>Target Audience</label>
-                    <input className={styles.genInput} placeholder="e.g. Early-stage SaaS founders with 0-10k MRR" value={genForm.targetAudience} onChange={e => setGenForm(f => ({ ...f, targetAudience: e.target.value }))} />
+                    <input className={`${styles.genInput} ${genForm.targetAudience ? styles.genInputFilled : ''}`} placeholder="e.g. Startup founders with 0-10k MRR looking to reduce churn" value={genForm.targetAudience} onChange={e => setGenForm(f => ({ ...f, targetAudience: e.target.value }))} />
                   </div>
+
                   <div className={styles.genField}>
-                    <label className={styles.genLabel}>Main Offer *</label>
-                    <textarea className={styles.genTa} placeholder="What exactly are you selling? What does the customer get? e.g. A 6-week done-with-you program to help founders build their first $10k MRR SaaS..." value={genForm.mainOffer} onChange={e => setGenForm(f => ({ ...f, mainOffer: e.target.value }))} />
+                    <label className={styles.genLabel}>Main Offer <span style={{color:'var(--red)'}}>*</span></label>
+                    <textarea className={`${styles.genTa} ${genForm.mainOffer ? styles.genInputFilled : ''}`} placeholder="What exactly are you selling? What does the customer get and what outcome do they achieve?" value={genForm.mainOffer} onChange={e => setGenForm(f => ({ ...f, mainOffer: e.target.value }))} />
                   </div>
+
                   <div className={styles.genField}>
                     <label className={styles.genLabel}>Key Benefits / Differentiators</label>
-                    <textarea className={styles.genTa} placeholder="List 3-5 specific outcomes or benefits. e.g. Ship in 30 days not 6 months, No-code tools included, 1-on-1 weekly calls..." value={genForm.keyBenefits} onChange={e => setGenForm(f => ({ ...f, keyBenefits: e.target.value }))} />
+                    <textarea className={`${styles.genTa} ${genForm.keyBenefits ? styles.genInputFilled : ''}`} placeholder="List 3-5 specific outcomes or benefits&#10;e.g. Automate workflows without coding&#10;Save 15+ hours per week&#10;No technical skills required" value={genForm.keyBenefits} onChange={e => setGenForm(f => ({ ...f, keyBenefits: e.target.value }))} />
                   </div>
+
                   <div className={styles.genRow}>
                     <div className={styles.genField}>
                       <label className={styles.genLabel}>Primary SEO Keyword</label>
-                      <input className={styles.genInput} placeholder="e.g. CRO audit tool" value={genForm.primaryKeyword} onChange={e => setGenForm(f => ({ ...f, primaryKeyword: e.target.value }))} />
+                      <input className={`${styles.genInput} ${genForm.primaryKeyword ? styles.genInputFilled : ''}`} placeholder="e.g. AI workflow automation" value={genForm.primaryKeyword} onChange={e => setGenForm(f => ({ ...f, primaryKeyword: e.target.value }))} />
                     </div>
                     <div className={styles.genField}>
                       <label className={styles.genLabel}>Secondary Keywords</label>
-                      <input className={styles.genInput} placeholder="e.g. website conversion, CTA optimization" value={genForm.secondaryKeywords} onChange={e => setGenForm(f => ({ ...f, secondaryKeywords: e.target.value }))} />
+                      <input className={`${styles.genInput} ${genForm.secondaryKeywords ? styles.genInputFilled : ''}`} placeholder="e.g. team productivity, no-code automation" value={genForm.secondaryKeywords} onChange={e => setGenForm(f => ({ ...f, secondaryKeywords: e.target.value }))} />
                     </div>
                   </div>
+
                   <div className={styles.genField}>
                     <label className={styles.genLabel}>Tone of Voice</label>
                     <select className={styles.genInput} value={genForm.tone} onChange={e => setGenForm(f => ({ ...f, tone: e.target.value }))}>
@@ -737,125 +807,203 @@ export default function Page() {
                       <option value="luxury">Premium & exclusive</option>
                     </select>
                   </div>
+
                   <button
-                    className={styles.btnPrimary}
+                    className={styles.generateBtn}
                     onClick={doGenerateCopy}
                     disabled={genLoading || !genForm.projectName || !genForm.mainOffer}
-                    style={{ opacity: (!genForm.projectName || !genForm.mainOffer) ? 0.5 : 1 }}
                   >
                     {genLoading ? (
-                      <>
-                        <div className={styles.anRing} style={{ width: 16, height: 16, borderWidth: 2, margin: 0 }} />
-                        Generating…
-                      </>
+                      <span className={styles.generateBtnLoading}>
+                        <span className={styles.generateSpinner} />
+                        Writing your copy…
+                      </span>
                     ) : (
                       <>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                         Generate Full Website Copy
                       </>
                     )}
                   </button>
                 </div>
 
-                {genLoading && (
-                  <div className={styles.genLoading}>
-                    <div className={styles.genLoadingDot} />
-                    <div className={styles.genLoadingDot} />
-                    <div className={styles.genLoadingDot} />
-                    Writing your website copy…
+                {/* Saved copies sidebar */}
+                <div className={styles.generateSidebar}>
+                  <div className={styles.sidebarTitle}>Saved Copies</div>
+                  {loadSavedCopies().length === 0 ? (
+                    <div className={styles.sidebarEmpty}>
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{opacity:.3}}><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                      <p>No saved copies yet</p>
+                    </div>
+                  ) : loadSavedCopies().map((c, i) => (
+                    <div key={i} className={styles.sidebarItem} onClick={() => { setGenResult(c.data); setGenForm(c.form) }}>
+                      <div className={styles.sidebarItemName}>{c.form.projectName}</div>
+                      <div className={styles.sidebarItemMeta}>{c.form.industry} · {daysLeft(c.ts)}d left</div>
+                      <div className={styles.sidebarScore} style={{color: scoreColor(c.conversionScore)}}>
+                        {c.conversionScore}<span style={{fontSize:11,opacity:.6}}>/100</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className={styles.generateResults}>
+                {/* Results header */}
+                <div className={styles.generateResultsHeader}>
+                  <div>
+                    <div className={styles.generateResultsTitle}>{genForm.projectName}</div>
+                    <div className={styles.generateResultsMeta}>{genForm.industry} · {genResult.sections?.length} sections generated</div>
                   </div>
-                )}
+                  <div className={styles.generateResultsActions}>
+                    <button className={styles.btnGhost} onClick={() => { setGenResult(null) }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                      Edit
+                    </button>
+                    <button className={styles.btnGhost} onClick={() => {
+                      const score = calcConversionScore(genResult)
+                      saveCopyResult({ form: genForm, data: genResult, conversionScore: score, ts: Date.now() })
+                    }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                      Save
+                    </button>
+                  </div>
+                </div>
 
-                {genResult && (
-                  <div className={styles.genOutput}>
-                    {/* Meta */}
-                    <div className={styles.genSection}>
+                {/* Conversion Score */}
+                <div className={styles.conversionScoreCard}>
+                  <div className={styles.conversionScoreLeft}>
+                    <div className={styles.conversionScoreLabel}>Predicted Conversion Strength</div>
+                    <div className={styles.conversionScoreNum} style={{color: scoreColor(calcConversionScore(genResult))}}>
+                      {calcConversionScore(genResult)}<span className={styles.conversionScoreDenom}>/100</span>
+                    </div>
+                    <div className={styles.conversionScoreNote}>{getConversionNote(calcConversionScore(genResult))}</div>
+                  </div>
+                  <div className={styles.conversionScoreBars}>
+                    {[
+                      ['Headline clarity', genResult.sections?.find(s => s.name?.toLowerCase().includes('hero')) ? 85 : 60],
+                      ['CTA strength', genResult.sections?.find(s => s.cta_primary) ? 80 : 55],
+                      ['Social proof', genResult.sections?.find(s => s.name?.toLowerCase().includes('testimonial')) ? 75 : 45],
+                      ['SEO coverage', genForm.primaryKeyword ? 90 : 50],
+                      ['Trust signals', genResult.sections?.find(s => s.guarantee) ? 80 : 50],
+                    ].map(([label, val]) => (
+                      <div key={String(label)} className={styles.conversionBar}>
+                        <div className={styles.conversionBarLabel}>{label}</div>
+                        <div className={styles.conversionBarTrack}>
+                          <div className={styles.conversionBarFill} style={{width:`${val}%`, background: scoreColor(Number(val))}} />
+                        </div>
+                        <div className={styles.conversionBarNum} style={{color: scoreColor(Number(val))}}>{val}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* SEO meta */}
+                <div className={styles.genSection}>
+                  <div className={styles.genSectionHead}>
+                    <div className={styles.genSectionName}><div className={styles.genSectionNameDot} />SEO Meta Tags</div>
+                    <button className={styles.btnDarkSm} onClick={() => doCopy(`Title: ${genResult.meta?.title}\nDescription: ${genResult.meta?.description}`, 'meta')}>
+                      {copiedId === 'meta' ? '✓ Copied' : 'Copy'}
+                    </button>
+                  </div>
+                  <div className={styles.genSectionBody}>
+                    <div className={styles.metaRow}><span className={styles.metaLbl}>Title</span><span className={styles.metaVal}>{genResult.meta?.title}</span></div>
+                    <div className={styles.metaRow}><span className={styles.metaLbl}>Description</span><span className={styles.metaVal}>{genResult.meta?.description}</span></div>
+                  </div>
+                </div>
+
+                {/* All sections */}
+                {genResult.sections?.map((sec, i) => {
+                  const allText = [
+                    sec.headline && `Headline:\n${sec.headline}`,
+                    sec.subheadline && `Subheadline:\n${sec.subheadline}`,
+                    sec.cta_primary && `Primary CTA: ${sec.cta_primary}`,
+                    sec.cta_secondary && `Secondary CTA: ${sec.cta_secondary}`,
+                    sec.body && `Body:\n${sec.body}`,
+                    sec.copy && sec.copy,
+                    sec.cta && `CTA: ${sec.cta}`,
+                    sec.guarantee && `Guarantee: ${sec.guarantee}`,
+                    sec.items?.map((item, j) => `${j+1}. ${Object.values(item).join(' — ')}`).join('\n'),
+                    sec.steps?.map((step, j) => `Step ${j+1}: ${Object.values(step).join(' — ')}`).join('\n'),
+                    sec.tiers?.map(tier => Object.entries(tier).map(([k,v]) => `${k}: ${Array.isArray(v) ? (v as string[]).join(', ') : String(v)}`).join('\n')).join('\n---\n'),
+                  ].filter(Boolean).join('\n\n')
+
+                  return (
+                    <div key={i} className={styles.genSection} style={{animationDelay:`${i*0.04}s`}}>
                       <div className={styles.genSectionHead}>
-                        <div className={styles.genSectionName}><div className={styles.genSectionNameDot} />SEO Meta Tags</div>
-                        <button className={styles.btnDarkSm} onClick={() => doCopy(`Title: ${genResult.meta.title}\nDescription: ${genResult.meta.description}`, 'meta')}>
-                          {copiedId === 'meta' ? 'Copied!' : 'Copy'}
+                        <div className={styles.genSectionName}>
+                          <div className={styles.genSectionNameDot} style={{background: i % 3 === 0 ? 'var(--blue)' : i % 3 === 1 ? 'var(--green)' : 'var(--amber)'}} />
+                          {sec.name}
+                        </div>
+                        <button className={styles.btnDarkSm} onClick={() => doCopy(allText, `gen-${i}`)}>
+                          {copiedId === `gen-${i}` ? '✓ Copied' : 'Copy'}
                         </button>
                       </div>
                       <div className={styles.genSectionBody}>
-                        <div className={styles.genSectionCopy}>
-                          <strong>Title:</strong> {genResult.meta.title}{'\n'}
-                          <strong>Meta Description:</strong> {genResult.meta.description}
-                        </div>
+                        {sec.headline && <div className={styles.genCopyRow}><span className={styles.genCopyLbl}>Headline</span><span className={styles.genCopyVal}>{sec.headline}</span></div>}
+                        {sec.subheadline && <div className={styles.genCopyRow}><span className={styles.genCopyLbl}>Subheadline</span><span className={styles.genCopyVal}>{sec.subheadline}</span></div>}
+                        {sec.cta_primary && <div className={styles.genCopyRow}><span className={styles.genCopyLbl}>Primary CTA</span><span className={`${styles.genCopyVal} ${styles.genCopyValCta}`}>{sec.cta_primary}</span></div>}
+                        {sec.cta_secondary && <div className={styles.genCopyRow}><span className={styles.genCopyLbl}>Secondary CTA</span><span className={styles.genCopyVal}>{sec.cta_secondary}</span></div>}
+                        {sec.body && <div className={styles.genCopyRow}><span className={styles.genCopyLbl}>Body</span><span className={styles.genCopyVal}>{sec.body}</span></div>}
+                        {sec.copy && <div className={styles.genCopyRow}><span className={styles.genCopyLbl}>Copy</span><span className={styles.genCopyVal}>{sec.copy}</span></div>}
+                        {sec.cta && <div className={styles.genCopyRow}><span className={styles.genCopyLbl}>CTA</span><span className={`${styles.genCopyVal} ${styles.genCopyValCta}`}>{sec.cta}</span></div>}
+                        {sec.guarantee && <div className={styles.genCopyRow}><span className={styles.genCopyLbl}>Guarantee</span><span className={styles.genCopyVal}>{sec.guarantee}</span></div>}
+                        {sec.items && (
+                          <div className={styles.genItemsList}>
+                            {sec.items.map((item, j) => (
+                              <div key={j} className={styles.genItem}>
+                                {Object.entries(item).map(([k, v]) => (
+                                  <div key={k} className={styles.genItemRow}><span className={styles.genCopyLbl}>{k}</span><span className={styles.genCopyVal}>{String(v)}</span></div>
+                                ))}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {sec.steps && (
+                          <div className={styles.genItemsList}>
+                            {sec.steps.map((step, j) => (
+                              <div key={j} className={styles.genStep}>
+                                <div className={styles.genStepNum}>{j+1}</div>
+                                <div>{Object.values(step).join(' — ')}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {sec.tiers && (
+                          <div className={styles.genTiers}>
+                            {sec.tiers.map((tier, j) => (
+                              <div key={j} className={styles.genTier}>
+                                {Object.entries(tier).map(([k, v]) => (
+                                  <div key={k} className={styles.genItemRow}><span className={styles.genCopyLbl}>{k}</span><span className={styles.genCopyVal}>{Array.isArray(v) ? (v as string[]).join(' · ') : String(v)}</span></div>
+                                ))}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {sec.seo_note && (
+                          <div className={styles.genSeoNote}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <strong>SEO:</strong> {sec.seo_note}
+                          </div>
+                        )}
                       </div>
                     </div>
+                  )
+                })}
 
-                    {/* Sections */}
-                    {genResult.sections?.map((sec, i) => {
-                      const copyText = [
-                        sec.headline && `Headline: ${sec.headline}`,
-                        sec.subheadline && `Subheadline: ${sec.subheadline}`,
-                        sec.cta_primary && `Primary CTA: ${sec.cta_primary}`,
-                        sec.cta_secondary && `Secondary CTA: ${sec.cta_secondary}`,
-                        sec.body && `Body: ${sec.body}`,
-                        sec.copy && sec.copy,
-                        sec.cta && `CTA: ${sec.cta}`,
-                        sec.guarantee && `Guarantee: ${sec.guarantee}`,
-                        sec.items?.map(item => Object.entries(item).map(([k, v]) => `${k}: ${v}`).join('\n')).join('\n'),
-                        sec.steps?.map(step => Object.entries(step).map(([k, v]) => `${k}: ${v}`).join('\n')).join('\n'),
-                      ].filter(Boolean).join('\n')
-
-                      return (
-                        <div key={i} className={styles.genSection}>
-                          <div className={styles.genSectionHead}>
-                            <div className={styles.genSectionName}>
-                              <div className={styles.genSectionNameDot} />
-                              {sec.name}
-                            </div>
-                            <button className={styles.btnDarkSm} onClick={() => doCopy(copyText, `gen-${i}`)}>
-                              {copiedId === `gen-${i}` ? 'Copied!' : 'Copy'}
-                            </button>
-                          </div>
-                          <div className={styles.genSectionBody}>
-                            <div className={styles.genSectionCopy}>
-                              {sec.headline && <><strong>Headline:</strong> {sec.headline}{'\n'}</>}
-                              {sec.subheadline && <><strong>Subheadline:</strong> {sec.subheadline}{'\n'}</>}
-                              {sec.cta_primary && <><strong>Primary CTA:</strong> {sec.cta_primary}{'\n'}</>}
-                              {sec.cta_secondary && <><strong>Secondary CTA:</strong> {sec.cta_secondary}{'\n'}</>}
-                              {sec.body && <><strong>Body:</strong> {sec.body}{'\n'}</>}
-                              {sec.copy && <>{sec.copy}{'\n'}</>}
-                              {sec.cta && <><strong>CTA:</strong> {sec.cta}{'\n'}</>}
-                              {sec.guarantee && <><strong>Guarantee:</strong> {sec.guarantee}{'\n'}</>}
-                              {sec.items && sec.items.map((item, j) => (
-                                <div key={j} style={{ marginTop: 8 }}>
-                                  {Object.entries(item).map(([k, v]) => (
-                                    <div key={k}><strong>{k}:</strong> {String(v)}</div>
-                                  ))}
-                                </div>
-                              ))}
-                              {sec.steps && sec.steps.map((step, j) => (
-                                <div key={j} style={{ marginTop: 8 }}>
-                                  <strong>Step {j + 1}:</strong> {Object.values(step).join(' — ')}
-                                </div>
-                              ))}
-                              {sec.tiers && sec.tiers.map((tier, j) => (
-                                <div key={j} style={{ marginTop: 8, padding: '10px 0', borderTop: '1px solid var(--border)' }}>
-                                  {Object.entries(tier).map(([k, v]) => (
-                                    <div key={k}><strong>{k}:</strong> {Array.isArray(v) ? (v as string[]).join(', ') : String(v)}</div>
-                                  ))}
-                                </div>
-                              ))}
-                            </div>
-                            {sec.seo_note && (
-                              <div className={styles.genSeoNote}>
-                                🔍 <strong>SEO:</strong> {sec.seo_note}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
+                <div className={styles.generateResultsFooter}>
+                  <button className={styles.btnPrimary} onClick={() => {
+                    const score = calcConversionScore(genResult)
+                    saveCopyResult({ form: genForm, data: genResult, conversionScore: score, ts: Date.now() })
+                    setCopiedId('saved-confirm')
+                    setTimeout(() => setCopiedId(null), 2000)
+                  }}>
+                    {copiedId === 'saved-confirm' ? '✓ Saved for 15 days' : '↓ Save Copy'}
+                  </button>
+                  <button className={styles.btnGhost} onClick={() => { setGenResult(null) }}>Generate another</button>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+
 
       {showHistory && (
         <div className={styles.drawerOverlay} onClick={() => setShowHistory(false)}>
