@@ -459,15 +459,17 @@ export default function Page() {
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                     Live screenshot
                   </div>
-                  <a href={`https://${displayUrl}`} target="_blank" rel="noopener noreferrer">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={screenshotUrl}
-                      alt={`Screenshot of ${displayUrl}`}
-                      className={styles.screenshotImg}
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                    />
-                  </a>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={screenshotUrl}
+                    alt={`Screenshot of ${displayUrl}`}
+                    className={styles.screenshotImg}
+                    loading="lazy"
+                    onError={(e) => {
+                      const el = e.target as HTMLImageElement
+                      el.parentElement!.style.display = 'none'
+                    }}
+                  />
                 </div>
               </div>
             )}
