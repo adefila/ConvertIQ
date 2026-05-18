@@ -161,9 +161,7 @@ function SectionCard({ section, defaultOpen }: { section: PageSection; defaultOp
 const SCORE_KEYS: Array<[keyof AuditScores, string]> = [
   ['conversion', 'Conversion'], ['ux', 'UX'], ['cta', 'CTA Strength'], ['trust', 'Trust'], ['mobile', 'Mobile'],
 ]
-
 const STEPS = ['Fetching live page', 'Reading every section', 'Scoring CRO signals', 'Writing expert audit']
-
 const PREVIEWS = [
   { label: 'Conversion', val: 54, sub: 'Critical gaps', color: 'var(--red)', pct: 54, ibg: 'var(--red-bg)', ic: 'var(--red)', icon: 'M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01' },
   { label: 'UX Score', val: 78, sub: 'Good structure', color: 'var(--green)', pct: 78, ibg: 'var(--green-bg)', ic: 'var(--green)', icon: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' },
@@ -180,6 +178,7 @@ export default function Page() {
   const [result, setResult] = useState<AuditResult | null>(null)
   const [displayUrl, setDisplayUrl] = useState('')
   const [auditTime, setAuditTime] = useState('')
+  const [screenshotUrl, setScreenshotUrl] = useState('')
   const [tab, setTab] = useState('sections')
   const [savedAudits, setSavedAudits] = useState<SavedAudit[]>([])
   const [showHistory, setShowHistory] = useState(false)
@@ -241,47 +240,55 @@ export default function Page() {
     animateSteps(() => { setProgress(92); progDone = true; tryFinalize() })
 
     try {
-      // Step 1: fetch page content
-      let pageContent = `Website: ${normalized}. Analyze based on domain knowledge.`
+      // Fetch page content + screenshot URL
+      let pageContent = `Website: ${normalized}`
+      let fetchedScreenshotUrl = ''
+
       try {
+        const controller = new AbortController()
+        const fetchTimeout = setTimeout(() => controller.abort(), 20000)
+
         const fetchRes = await fetch('/api/fetch-page', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ url: normalized }),
+          signal: controller.signal,
         })
+        clearTimeout(fetchTimeout)
+
         if (fetchRes.ok) {
           const fetchText = await fetchRes.text()
           try {
-            const fd = JSON.parse(fetchText) as { content?: string }
-            if (fd.content && fd.content.length > 100) pageContent = fd.content
+            const fd = JSON.parse(fetchText) as { content?: string; method?: string; screenshotUrl?: string }
+            if (fd.content && fd.content.length > 200 && !fd.content.startsWith('Website:')) {
+              pageContent = fd.content
+            }
+            if (fd.screenshotUrl) fetchedScreenshotUrl = fd.screenshotUrl
           } catch { /* use fallback */ }
         }
-      } catch { /* use fallback */ }
+      } catch { /* fetch timed out — use URL only */ }
 
-      // Step 2: run audit
+      // Run the audit
       const auditRes = await fetch('/api/audit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: normalized, pageContent, fetchMethod: 'live' }),
+        body: JSON.stringify({ url: normalized, pageContent, fetchMethod: 'live', screenshotUrl: fetchedScreenshotUrl }),
       })
 
-      // Safe text parse — never crash on non-JSON response
       const auditText = await auditRes.text()
 
-      let ad: { result?: AuditResult; error?: string }
+      let ad: { result?: AuditResult; error?: string; screenshotUrl?: string }
       try {
-        ad = JSON.parse(auditText) as { result?: AuditResult; error?: string }
+        ad = JSON.parse(auditText) as { result?: AuditResult; error?: string; screenshotUrl?: string }
       } catch {
-        // Server returned HTML error page (timeout, 504, etc)
-        if (auditText.includes('FUNCTION_INVOCATION_TIMEOUT') || auditText.includes('504') || auditText.includes('An error')) {
-          throw new Error('The audit timed out. Please try again — it usually works on the second attempt.')
-        }
-        throw new Error('Unexpected server response. Please try again.')
+        throw new Error('Server timed out. Please try again.')
       }
 
       if (ad.error) throw new Error(ad.error)
       if (!ad.result) throw new Error('No result returned. Please try again.')
       apiResult = ad.result
+      if (ad.screenshotUrl) fetchedScreenshotUrl = ad.screenshotUrl
+      setScreenshotUrl(fetchedScreenshotUrl)
 
     } catch (e: unknown) {
       apiError = e instanceof Error ? e.message : 'Something went wrong. Please try again.'
@@ -308,7 +315,7 @@ export default function Page() {
       })
       const text = await res.text()
       try {
-        const d = JSON.parse(text) as { result?: AuditResult; error?: string }
+        const d = JSON.parse(text) as { result?: AuditResult }
         setCustomOutput(d.result?.copy?.headline?.improved || 'Could not rewrite. Try again.')
       } catch {
         setCustomOutput('Server timed out. Try again.')
@@ -331,7 +338,6 @@ export default function Page() {
 
   return (
     <div>
-      {/* NAV */}
       <nav className={styles.nav}>
         <div className={styles.brand} onClick={() => setScreen('home')}>
           <div className={styles.brandDot} />ConvertIQ
@@ -344,7 +350,6 @@ export default function Page() {
         </button>
       </nav>
 
-      {/* HOME */}
       {screen === 'home' && (
         <div className={styles.homeWrap}>
           <div className={styles.homeInner}>
@@ -402,7 +407,6 @@ export default function Page() {
         </div>
       )}
 
-      {/* ANALYZING */}
       {screen === 'analyzing' && (
         <div className={styles.analyzingWrap}>
           <div className={styles.anShell}>
@@ -422,10 +426,8 @@ export default function Page() {
         </div>
       )}
 
-      {/* RESULTS */}
       {screen === 'results' && result && (
         <div className={styles.results}>
-
           <div className={styles.resTop}>
             <div className={styles.resTopInner}>
               <div>
@@ -450,6 +452,25 @@ export default function Page() {
                 </button>
               </div>
             </div>
+            {screenshotUrl && (
+              <div className={styles.screenshotWrap}>
+                <div className={styles.screenshotInner}>
+                  <div className={styles.screenshotLabel}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    Live screenshot
+                  </div>
+                  <a href={`https://${displayUrl}`} target="_blank" rel="noopener noreferrer">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={screenshotUrl}
+                      alt={`Screenshot of ${displayUrl}`}
+                      className={styles.screenshotImg}
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                    />
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className={styles.scoreStrip}>
@@ -486,7 +507,6 @@ export default function Page() {
             </div>
           </div>
 
-          {/* SECTIONS */}
           {tab === 'sections' && (
             <div className={styles.panel}>
               <div className={styles.infoBanner}>
@@ -497,7 +517,7 @@ export default function Page() {
                 </div>
                 <div>
                   <div className={styles.infoTitle}>Section-by-section audit</div>
-                  <div className={styles.infoBody}>We fetched your live page and read every section top to bottom — each card has the actual copy we found, what is hurting conversion, and exactly how to fix it.</div>
+                  <div className={styles.infoBody}>We read your live page section by section — each card has the actual copy found, what is hurting conversion, and exactly how to fix it.</div>
                 </div>
               </div>
               {result.sections?.map((sec, i) => <SectionCard key={i} section={sec} defaultOpen={i === 0} />)}
@@ -510,7 +530,6 @@ export default function Page() {
             </div>
           )}
 
-          {/* COPY REWRITER */}
           {tab === 'copy' && (
             <div className={styles.panel}>
               {sectionCopyItems.length > 0 ? (
@@ -523,7 +542,7 @@ export default function Page() {
                     </div>
                     <div>
                       <div className={styles.infoTitle}>Section copy rewrites</div>
-                      <div className={styles.infoBody}>Each rewrite is pulled from a section that needs improvement — with the exact original copy quoted from your live page and an AI-powered conversion-focused alternative.</div>
+                      <div className={styles.infoBody}>Each rewrite is pulled from a section that needs improvement — original copy from your site alongside an AI-powered conversion-focused alternative.</div>
                     </div>
                   </div>
                   {sectionCopyItems.map((sec, i) => {
@@ -566,19 +585,14 @@ export default function Page() {
                   </div>
                   <div>
                     <div className={styles.infoTitle}>No section rewrites generated</div>
-                    <div className={styles.infoBody}>Run the audit again to generate section-specific copy rewrites, or use the custom rewriter below to paste any copy from your site.</div>
+                    <div className={styles.infoBody}>Use the custom rewriter below to paste any copy from your site for an expert rewrite.</div>
                   </div>
                 </div>
               )}
               <div className={styles.customBlock}>
                 <div className={styles.customLbl}>Custom AI Rewrite</div>
-                <div className={styles.customHint}>Paste any copy from your site for an expert conversion-focused rewrite.</div>
-                <textarea
-                  className={styles.customTa}
-                  placeholder="Paste a headline, CTA, paragraph, or any copy from your site…"
-                  value={customInput}
-                  onChange={e => setCustomInput(e.target.value)}
-                />
+                <div className={styles.customHint}>Paste any copy from your site for a conversion-focused rewrite.</div>
+                <textarea className={styles.customTa} placeholder="Paste a headline, CTA, paragraph, or any copy…" value={customInput} onChange={e => setCustomInput(e.target.value)} />
                 <div style={{ marginTop: 16 }}>
                   <button className={styles.btnPrimary} onClick={doCustomRewrite}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
@@ -592,7 +606,6 @@ export default function Page() {
             </div>
           )}
 
-          {/* RECOMMENDATIONS */}
           {tab === 'recs' && (
             <div className={styles.panel}>
               <div className={styles.recsGrid}>
@@ -617,7 +630,6 @@ export default function Page() {
             </div>
           )}
 
-          {/* LAYOUT */}
           {tab === 'layout' && (
             <div className={styles.panel}>
               <div className={styles.layList}>
@@ -633,11 +645,9 @@ export default function Page() {
               </div>
             </div>
           )}
-
         </div>
       )}
 
-      {/* HISTORY DRAWER */}
       {showHistory && (
         <div className={styles.drawerOverlay} onClick={() => setShowHistory(false)}>
           <div className={styles.drawer} onClick={e => e.stopPropagation()}>
