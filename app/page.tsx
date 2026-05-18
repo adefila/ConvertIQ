@@ -27,7 +27,7 @@ interface AuditResult {
 interface SavedAudit { url: string; display: string; data: AuditResult; overall: number; auditTime: string; ts: number }
 
 interface GeneratedCopySection { name: string; copy?: string; headline?: string; subheadline?: string; cta_primary?: string; cta_secondary?: string; body?: string; items?: Record<string, string>[]; steps?: Record<string, string>[]; tiers?: Record<string, unknown>[]; guarantee?: string; cta?: string; seo_note?: string }
-interface GeneratedCopy { meta: { title: string; description: string }; sections: GeneratedCopySection[] }
+interface GeneratedCopy { meta: { title: string; description: string }; siteType?: string; conversionTips?: string[]; sections: GeneratedCopySection[] }
 
 interface SavedCopy { form: typeof genFormDefault; data: GeneratedCopy; conversionScore: number; ts: number }
 
@@ -70,6 +70,14 @@ function getConversionNote(score: number): string {
   if (score >= 70) return 'Good — a few tweaks will push it higher'
   if (score >= 55) return 'Average — missing key conversion elements'
   return 'Needs work — add trust signals and stronger CTAs'
+}
+
+function detectSiteType(domain: string): string {
+  const d = domain.toLowerCase()
+  if (d.includes('framer') || d.includes('portfolio') || d.includes('design') || d.includes('samuel') || d.includes('creative') || d.includes('studio') || d.includes('works') || d.includes('folio')) return 'Portfolio'
+  if (d.includes('shop') || d.includes('store') || d.includes('buy') || d.includes('ecom') || d.includes('cart')) return 'Ecom'
+  if (d.includes('agency') || d.includes('marketing') || d.includes('digital') || d.includes('media')) return 'Agency'
+  return 'Saas'
 }
 
 function loadAudits(): SavedAudit[] {
@@ -233,6 +241,7 @@ export default function Page() {
   // Generate Full Copy state
   const [genLoading, setGenLoading] = useState(false)
   const [genResult, setGenResult] = useState<GeneratedCopy | null>(null)
+  const [activePage, setActivePage] = useState('Home')
   const [genForm, setGenForm] = useState({
     projectName: '', industry: '', targetAudience: '',
     mainOffer: '', keyBenefits: '', tone: 'professional',
@@ -394,13 +403,26 @@ export default function Page() {
       const res = await fetch('/api/generate-copy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(genForm),
+        body: JSON.stringify({ ...genForm, pageType: activePage }),
       })
       const text = await res.text()
       const d = JSON.parse(text) as { result?: GeneratedCopy; error?: string }
       if (d.result) setGenResult(d.result)
     } catch { /* silent */ }
     setGenLoading(false)
+  }
+
+  const deleteAudit = (url: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    const updated = loadAudits().filter(a => a.url !== url)
+    try { localStorage.setItem('ciq_v5', JSON.stringify(updated)) } catch {}
+    setSavedAudits(updated)
+  }
+
+  const deleteCopy = (projectName: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    const updated = loadSavedCopies().filter(c => c.form.projectName !== projectName)
+    try { localStorage.setItem('ciq_copies_v1', JSON.stringify(updated)) } catch {}
   }
 
   const loadSaved = (entry: SavedAudit) => {
@@ -421,12 +443,12 @@ export default function Page() {
           <div className={styles.brandDot} />ConvertIQ
         </div>
         <div className={styles.navRight}>
-          <button className={styles.btnGhost} onClick={() => setScreen('generate')} style={{ gap: 6 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <button className={styles.navGenerateBtn} onClick={() => setScreen('generate')}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
             Generate Copy
           </button>
           <button className={styles.btnGhost} onClick={() => { setSavedAudits(loadAudits()); setShowHistory(true) }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
             </svg>
             Saved Audits
@@ -762,6 +784,20 @@ export default function Page() {
                 <div className={styles.generateForm}>
                   <div className={styles.generateFormTitle}>Project Details</div>
 
+                  {/* Page selector */}
+                  <div className={styles.genField}>
+                    <label className={styles.genLabel}>Which page are you writing copy for?</label>
+                    <div className={styles.pageTabs}>
+                      {['Home', 'About', 'Services', 'Pricing', 'Contact', 'Case Studies', 'Portfolio', 'Blog', 'Landing Page'].map(p => (
+                        <button
+                          key={p}
+                          className={`${styles.pageTab} ${activePage === p ? styles.pageTabActive : ''}`}
+                          onClick={() => setActivePage(p)}
+                        >{p}</button>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className={styles.genRow}>
                     <div className={styles.genField}>
                       <label className={styles.genLabel}>Project / Brand Name <span style={{color:'var(--red)'}}>*</span></label>
@@ -838,12 +874,17 @@ export default function Page() {
                       <p>No saved copies yet</p>
                     </div>
                   ) : loadSavedCopies().map((c, i) => (
-                    <div key={i} className={styles.sidebarItem} onClick={() => { setGenResult(c.data); setGenForm(c.form) }}>
+                    <div key={i} className={styles.sidebarItem} onClick={() => { setGenResult(c.data); setGenForm(c.form); setActivePage('Home') }}>
                       <div className={styles.sidebarItemName}>{c.form.projectName}</div>
                       <div className={styles.sidebarItemMeta}>{c.form.industry} · {daysLeft(c.ts)}d left</div>
                       <div className={styles.sidebarScore} style={{color: scoreColor(c.conversionScore)}}>
                         {c.conversionScore}<span style={{fontSize:11,opacity:.6}}>/100</span>
                       </div>
+                      <button className={styles.histDelete} onClick={(e) => deleteCopy(c.form.projectName, e)} title="Delete" style={{position:'absolute',right:0,top:'50%',transform:'translateY(-50%)'}}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -853,8 +894,27 @@ export default function Page() {
                 {/* Results header */}
                 <div className={styles.generateResultsHeader}>
                   <div>
-                    <div className={styles.generateResultsTitle}>{genForm.projectName}</div>
-                    <div className={styles.generateResultsMeta}>{genForm.industry} · {genResult.sections?.length} sections generated</div>
+                    <div className={styles.generateResultsTitle}>
+                      {genForm.projectName} — {activePage} Page
+                    </div>
+                    <div className={styles.generateResultsMeta} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span>{genResult.sections?.length} sections generated</span>
+                      {genResult.siteType && (
+                        <span className={`${styles.siteTypeBadge} ${styles[`siteType${genResult.siteType?.replace(/\s/g,'')}`] ?? styles.siteTypeSaas}`}>
+                          {genResult.siteType}
+                        </span>
+                      )}
+                    </div>
+                    {genResult.conversionTips && genResult.conversionTips.length > 0 && (
+                      <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {genResult.conversionTips.map((tip, i) => (
+                          <div key={i} style={{ fontSize: 13, color: 'var(--text2)', display: 'flex', gap: 8 }}>
+                            <span style={{ color: 'var(--green)', fontWeight: 700 }}>✓</span>
+                            {tip}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className={styles.generateResultsActions}>
                     <button className={styles.btnGhost} onClick={() => { setGenResult(null) }}>
@@ -1031,6 +1091,7 @@ export default function Page() {
               </div>
             ) : savedAudits.map((a, i) => {
               const c = a.overall >= 70 ? 'var(--green)' : a.overall >= 50 ? 'var(--amber)' : 'var(--red)'
+              const siteType = detectSiteType(a.display)
               return (
                 <div key={i} className={styles.histItem} onClick={() => loadSaved(a)}>
                   <div className={styles.histIco}>
@@ -1041,11 +1102,23 @@ export default function Page() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className={styles.histUrl}>{a.display}</div>
-                    <div className={styles.histMeta}>
-                      {new Date(a.auditTime).toLocaleDateString([], { month: 'short', day: 'numeric' })} · {a.data?.sections?.length ?? 0} sections · {daysLeft(a.ts)}d left
+                    <div className={styles.histMeta} style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span>{new Date(a.auditTime).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+                      <span>·</span>
+                      <span>{a.data?.sections?.length ?? 0} sections</span>
+                      <span>·</span>
+                      <span>{daysLeft(a.ts)}d left</span>
+                      {siteType && (
+                        <span className={`${styles.siteTypeBadge} ${styles[`siteType${siteType}`]}`}>{siteType}</span>
+                      )}
                     </div>
                   </div>
                   <div className={styles.histScore} style={{ color: c }}>{a.overall}</div>
+                  <button className={styles.histDelete} onClick={(e) => deleteAudit(a.url, e)} title="Delete">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
                 </div>
               )
             })}
