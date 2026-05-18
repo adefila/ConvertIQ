@@ -8,18 +8,5 @@ const nextConfig = {
       { protocol: 'https', hostname: 'api.screenshotone.com' },
     ],
   },
-  async headers() {
-    return [
-      {
-        source: '/(.*)',
-        headers: [
-          {
-            key: 'Content-Security-Policy',
-            value: "img-src 'self' data: https://image.thum.io https://api.screenshotone.com;",
-          },
-        ],
-      },
-    ]
-  },
 }
 module.exports = nextConfig
