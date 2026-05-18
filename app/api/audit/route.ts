@@ -4,8 +4,8 @@ export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as { url?: string; pageContent?: string; fetchMethod?: string }
-    const { url, pageContent, fetchMethod } = body
+    const body = await req.json() as { url?: string; pageContent?: string; fetchMethod?: string; screenshotUrl?: string }
+    const { url, pageContent, fetchMethod, screenshotUrl } = body
 
     if (!url) return NextResponse.json({ error: 'No URL' }, { status: 400 })
 
@@ -17,18 +17,24 @@ export async function POST(req: NextRequest) {
       pageContent.startsWith('CUSTOM_REWRITE:')
     const copyText = isCustom ? pageContent.replace('CUSTOM_REWRITE:\n', '') : ''
     const hasContent = !isCustom && pageContent && pageContent.length > 300 && !pageContent.startsWith('Website:')
-    const content = hasContent ? pageContent!.slice(0, 3000) : ''
+    const content = hasContent ? pageContent!.slice(0, 8000) : ''
 
     const prompt = isCustom
       ? `Rewrite this copy to be outcome-focused for ${url}. Return ONLY the rewritten copy:\n\n${copyText}`
-      : `CRO audit of ${url}.${content ? ` Page content:\n${content}` : ' Use your knowledge of this site.'}
+      : `You are a world-class CRO strategist auditing: ${url}
 
-CRITICAL: Return ONLY valid compact JSON (no whitespace/indentation between fields). Start with { end with }. No markdown.
+${content
+    ? `FULL PAGE CONTENT (navbar to footer):\n${content}`
+    : `Analyze based on your knowledge of this website and industry.`
+}
 
-Keep ALL string values SHORT (under 20 words each). Use this exact structure:
-{"scores":{"conversion":52,"ux":65,"cta":44,"trust":55,"mobile":62},"score_notes":{"conversion":"short note","ux":"short note","cta":"short note","trust":"short note","mobile":"short note"},"sections":[{"name":"Hero","score":50,"what_we_found":"short 1-2 sentence description","issues":[{"severity":"high","what":"short issue","why":"short reason","fix":"short fix"}],"copy_rewrite":{"label":"label","original":"original copy","improved":"improved copy"}}],"overall_issues":[{"severity":"high","title":"title","description":"short desc","fix":"short fix"}],"copy":{"headline":{"original":"h1 text","improved":"rewrite"},"subheadline":{"original":"sub text","improved":"rewrite"},"cta":{"original":"cta text","improved":"rewrite"},"benefits":{"original":"benefits text","improved":"rewrite"}},"recommendations":[{"icon":"zap","title":"title","description":"short desc","impact":"high"}],"layout":[{"title":"title","description":"short desc"}]}
+Read the ENTIRE page top to bottom. Identify every section you can see: Navigation, Hero, Value Prop, Features, How It Works, Social Proof/Testimonials, Pricing, FAQ, Footer CTA, Footer. Name each section by what it actually contains.
 
-Include: 4 sections, 2 issues per section, 3 overall issues, 6 recommendations, 5 layout items.`
+Return ONLY compact JSON (no whitespace between fields). Keep ALL string values SHORT (max 20 words):
+
+{"scores":{"conversion":52,"ux":65,"cta":44,"trust":55,"mobile":62},"score_notes":{"conversion":"brief note","ux":"brief note","cta":"brief note","trust":"brief note","mobile":"brief note"},"sections":[{"name":"Navigation","score":70,"what_we_found":"brief description of nav content","issues":[{"severity":"medium","what":"issue","why":"why it hurts","fix":"exact fix"}],"copy_rewrite":{"label":"Nav CTA","original":"exact text","improved":"better text"}},{"name":"Hero Section","score":46,"what_we_found":"brief description","issues":[{"severity":"high","what":"issue","why":"why","fix":"fix with example"}],"copy_rewrite":{"label":"Headline","original":"exact h1","improved":"improved h1"}}],"overall_issues":[{"severity":"high","title":"issue","description":"brief desc","fix":"fix"}],"copy":{"headline":{"original":"exact h1","improved":"rewrite"},"subheadline":{"original":"exact sub","improved":"rewrite"},"cta":{"original":"exact cta","improved":"rewrite"},"benefits":{"original":"exact benefits","improved":"rewrite"}},"recommendations":[{"icon":"zap","title":"title","description":"desc","impact":"high"}],"layout":[{"title":"change","description":"why"}]}
+
+Include ALL sections found. 2 issues per section max. 3 overall issues. 6 recommendations. 5 layout items.`
 
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -50,7 +56,6 @@ Include: 4 sections, 2 issues per section, 3 overall issues, 6 recommendations, 
       return NextResponse.json({ error: `API error ${anthropicRes.status}: ${e.slice(0, 200)}` }, { status: 500 })
     }
 
-    // Read stream with proper buffer handling
     const reader = anthropicRes.body!.getReader()
     const decoder = new TextDecoder()
     const textParts: string[] = []
@@ -60,10 +65,8 @@ Include: 4 sections, 2 issues per section, 3 overall issues, 6 recommendations, 
       const { done, value } = await reader.read()
       if (done) break
       buffer += decoder.decode(value, { stream: true })
-
       const lines = buffer.split('\n')
       buffer = lines.pop() ?? ''
-
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue
         const data = line.slice(6).trim()
@@ -73,7 +76,7 @@ Include: 4 sections, 2 issues per section, 3 overall issues, 6 recommendations, 
           if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta' && evt.delta.text) {
             textParts.push(evt.delta.text)
           }
-        } catch { /* skip malformed lines */ }
+        } catch { /* skip */ }
       }
     }
 
@@ -97,8 +100,6 @@ Include: 4 sections, 2 issues per section, 3 overall issues, 6 recommendations, 
           layout: [],
         },
       })
-
-
     }
 
     let clean = fullText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim()
@@ -108,7 +109,8 @@ Include: 4 sections, 2 issues per section, 3 overall issues, 6 recommendations, 
 
     try {
       const result = JSON.parse(clean)
-      return NextResponse.json({ ok: true, result })
+      // Attach screenshot URL to result so frontend can display it
+      return NextResponse.json({ ok: true, result, screenshotUrl: screenshotUrl ?? '' })
     } catch (parseErr) {
       const msg = parseErr instanceof Error ? parseErr.message : String(parseErr)
       return NextResponse.json({ error: `Parse failed: ${msg}` }, { status: 500 })
