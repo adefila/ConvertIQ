@@ -31,6 +31,8 @@ interface GeneratedCopy { meta: { title: string; description: string }; sections
 
 interface SavedCopy { form: typeof genFormDefault; data: GeneratedCopy; conversionScore: number; ts: number }
 
+const TTL = 15 * 24 * 60 * 60 * 1000
+
 const genFormDefault = { projectName: '', industry: '', targetAudience: '', mainOffer: '', keyBenefits: '', tone: 'professional', primaryKeyword: '', secondaryKeywords: '' }
 
 function loadSavedCopies(): SavedCopy[] {
