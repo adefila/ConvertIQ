@@ -320,7 +320,6 @@ export default function Page() {
     if (!customInput.trim()) return
     setCustomOutput('Rewriting…')
     try {
-      const apiKey = '' // hits our own API route
       const res = await fetch('/api/audit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -330,7 +329,6 @@ export default function Page() {
       try {
         const d = JSON.parse(text) as { result?: AuditResult }
         const raw = d.result?.copy?.headline?.improved || ''
-        // Strip any JSON/markdown wrapping that leaked through
         const cleaned = raw
           .replace(/^```json\s*/i, '')
           .replace(/^```\s*/i, '')
@@ -345,7 +343,6 @@ export default function Page() {
     } catch {
       setCustomOutput('Something went wrong. Try again.')
     }
-    void apiKey
   }
 
   const doGenerateCopy = async () => {
