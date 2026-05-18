@@ -19,22 +19,19 @@ export async function POST(req: NextRequest) {
     const hasContent = !isCustom && pageContent && pageContent.length > 300 && !pageContent.startsWith('Website:')
     const content = hasContent ? pageContent!.slice(0, 8000) : ''
 
-    const prompt = isCustom
+    const systemPrompt = `You are a CRO (Conversion Rate Optimization) expert. You ONLY respond with valid JSON objects. Never write any text before or after the JSON. Never apologize. Never explain. Just output the JSON.`
+
+    const userPrompt = isCustom
       ? `Rewrite this copy to be outcome-focused for ${url}. Return ONLY the rewritten copy:\n\n${copyText}`
-      : `You are a world-class CRO strategist auditing: ${url}
+      : `Audit this website for CRO: ${url}
 
-${content
-    ? `FULL PAGE CONTENT (navbar to footer):\n${content}`
-    : `Analyze based on your knowledge of this website and industry.`
-}
+${content ? `PAGE CONTENT:\n${content}` : `Use your knowledge of this website.`}
 
-Read the ENTIRE page top to bottom. Identify every section you can see: Navigation, Hero, Value Prop, Features, How It Works, Social Proof/Testimonials, Pricing, FAQ, Footer CTA, Footer. Name each section by what it actually contains.
+Identify every section top to bottom. Output ONLY this JSON (compact, no whitespace between fields, all string values max 20 words):
 
-Return ONLY compact JSON (no whitespace between fields). Keep ALL string values SHORT (max 20 words):
+{"scores":{"conversion":52,"ux":65,"cta":44,"trust":55,"mobile":62},"score_notes":{"conversion":"note","ux":"note","cta":"note","trust":"note","mobile":"note"},"sections":[{"name":"Navigation","score":70,"what_we_found":"description","issues":[{"severity":"high","what":"issue","why":"reason","fix":"fix"}],"copy_rewrite":{"label":"label","original":"original","improved":"improved"}},{"name":"Hero","score":50,"what_we_found":"description","issues":[{"severity":"high","what":"issue","why":"reason","fix":"fix"}],"copy_rewrite":{"label":"label","original":"original","improved":"improved"}}],"overall_issues":[{"severity":"high","title":"title","description":"desc","fix":"fix"}],"copy":{"headline":{"original":"h1","improved":"rewrite"},"subheadline":{"original":"sub","improved":"rewrite"},"cta":{"original":"cta","improved":"rewrite"},"benefits":{"original":"benefits","improved":"rewrite"}},"recommendations":[{"icon":"zap","title":"title","description":"desc","impact":"high"}],"layout":[{"title":"title","description":"desc"}]}
 
-{"scores":{"conversion":52,"ux":65,"cta":44,"trust":55,"mobile":62},"score_notes":{"conversion":"brief note","ux":"brief note","cta":"brief note","trust":"brief note","mobile":"brief note"},"sections":[{"name":"Navigation","score":70,"what_we_found":"brief description of nav content","issues":[{"severity":"medium","what":"issue","why":"why it hurts","fix":"exact fix"}],"copy_rewrite":{"label":"Nav CTA","original":"exact text","improved":"better text"}},{"name":"Hero Section","score":46,"what_we_found":"brief description","issues":[{"severity":"high","what":"issue","why":"why","fix":"fix with example"}],"copy_rewrite":{"label":"Headline","original":"exact h1","improved":"improved h1"}}],"overall_issues":[{"severity":"high","title":"issue","description":"brief desc","fix":"fix"}],"copy":{"headline":{"original":"exact h1","improved":"rewrite"},"subheadline":{"original":"exact sub","improved":"rewrite"},"cta":{"original":"exact cta","improved":"rewrite"},"benefits":{"original":"exact benefits","improved":"rewrite"}},"recommendations":[{"icon":"zap","title":"title","description":"desc","impact":"high"}],"layout":[{"title":"change","description":"why"}]}
-
-Include ALL sections found. 2 issues per section max. 3 overall issues. 6 recommendations. 5 layout items.`
+Include all sections found, 6 recommendations, 5 layout items, 3 overall issues.`
 
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -46,8 +43,9 @@ Include ALL sections found. 2 issues per section max. 3 overall issues. 6 recomm
       body: JSON.stringify({
         model: 'claude-haiku-4-5',
         max_tokens: isCustom ? 400 : 5000,
+        system: systemPrompt,
         stream: true,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: 'user', content: userPrompt }],
       }),
     })
 
@@ -102,14 +100,18 @@ Include ALL sections found. 2 issues per section max. 3 overall issues. 6 recomm
       })
     }
 
+    // Strip any text before the first { and after the last }
     let clean = fullText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim()
     const s = clean.indexOf('{')
     const e = clean.lastIndexOf('}')
-    if (s !== -1 && e !== -1) clean = clean.slice(s, e + 1)
+    if (s !== -1 && e !== -1) {
+      clean = clean.slice(s, e + 1)
+    } else {
+      return NextResponse.json({ error: 'No JSON found in response. Please try again.' }, { status: 500 })
+    }
 
     try {
       const result = JSON.parse(clean)
-      // Attach screenshot URL to result so frontend can display it
       return NextResponse.json({ ok: true, result, screenshotUrl: screenshotUrl ?? '' })
     } catch (parseErr) {
       const msg = parseErr instanceof Error ? parseErr.message : String(parseErr)
