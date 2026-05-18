@@ -837,13 +837,15 @@ export default function Page() {
 
                   <div className={styles.genField}>
                     <label className={styles.genLabel}>Tone of Voice</label>
-                    <select className={styles.genInput} value={genForm.tone} onChange={e => setGenForm(f => ({ ...f, tone: e.target.value }))}>
-                      <option value="professional">Professional & authoritative</option>
-                      <option value="friendly">Friendly & conversational</option>
-                      <option value="bold">Bold & direct</option>
-                      <option value="playful">Playful & energetic</option>
-                      <option value="luxury">Premium & exclusive</option>
-                    </select>
+                    <div className={styles.selectWrap}>
+                      <select className={styles.genInput} value={genForm.tone} onChange={e => setGenForm(f => ({ ...f, tone: e.target.value }))}>
+                        <option value="professional">Professional & authoritative</option>
+                        <option value="friendly">Friendly & conversational</option>
+                        <option value="bold">Bold & direct</option>
+                        <option value="playful">Playful & energetic</option>
+                        <option value="luxury">Premium & exclusive</option>
+                      </select>
+                    </div>
                   </div>
 
                   <button
@@ -1053,15 +1055,51 @@ export default function Page() {
                 })}
 
                 <div className={styles.generateResultsFooter}>
-                  <button className={styles.btnPrimary} onClick={() => {
-                    const score = calcConversionScore(genResult)
-                    saveCopyResult({ form: genForm, data: genResult, conversionScore: score, ts: Date.now() })
-                    setCopiedId('saved-confirm')
-                    setTimeout(() => setCopiedId(null), 2000)
-                  }}>
-                    {copiedId === 'saved-confirm' ? '✓ Saved for 15 days' : '↓ Save Copy'}
-                  </button>
-                  <button className={styles.btnGhost} onClick={() => { setGenResult(null) }}>Generate another</button>
+                  <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div>
+                      <div className={styles.quickPagesLabel}>Generate another page instantly</div>
+                      <div className={styles.quickPages}>
+                        {['Home', 'About', 'Services', 'Pricing', 'Contact', 'Case Studies', 'Portfolio', 'Landing Page']
+                          .filter(p => p !== activePage)
+                          .map(p => (
+                            <button
+                              key={p}
+                              className={styles.quickPageBtn}
+                              onClick={() => {
+                                setActivePage(p)
+                                setGenResult(null)
+                                setGenLoading(true)
+                                fetch('/api/generate-copy', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ ...genForm, pageType: p }),
+                                }).then(r => r.text()).then(text => {
+                                  try {
+                                    const d = JSON.parse(text) as { result?: GeneratedCopy }
+                                    if (d.result) setGenResult(d.result)
+                                  } catch { /* silent */ }
+                                  setGenLoading(false)
+                                }).catch(() => setGenLoading(false))
+                              }}
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                              {p}
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <button className={styles.navGenerateBtn} style={{ flex: 1, justifyContent: 'center' }} onClick={() => {
+                        const score = calcConversionScore(genResult!)
+                        saveCopyResult({ form: genForm, data: genResult!, conversionScore: score, ts: Date.now() })
+                        setCopiedId('saved-confirm')
+                        setTimeout(() => setCopiedId(null), 2000)
+                      }}>
+                        {copiedId === 'saved-confirm' ? '✓ Saved for 15 days' : '↓ Save Copy'}
+                      </button>
+                      <button className={styles.btnGhost} onClick={() => { setGenResult(null) }}>Edit details</button>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
