@@ -1,5 +1,5 @@
 /* NAV */
-.nav { height: 58px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; background: rgba(247,247,245,0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+.nav { height: 62px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; background: rgba(247,247,245,0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
 .brand { font-size: 18px; font-weight: 800; letter-spacing: -0.05em; color: var(--text); cursor: pointer; user-select: none; display: flex; align-items: center; gap: 7px; }
 .brandDot { width: 8px; height: 8px; border-radius: 50%; background: var(--text); }
 .navRight { display: flex; align-items: center; gap: 10px; }
@@ -10,7 +10,7 @@
 .btnPrimary:active { transform: scale(.97); }
 .btnSecondary { display: inline-flex; align-items: center; gap: 7px; padding: 11px 22px; border-radius: 100px; background: transparent; color: var(--text); font-size: 14px; font-weight: 600; font-family: var(--f); border: 1.5px solid var(--border2); cursor: pointer; letter-spacing: -0.02em; transition: background .15s, border-color .15s; }
 .btnSecondary:hover { background: var(--bg2); border-color: var(--border3); }
-.btnGhost { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 100px; background: transparent; color: var(--text2); font-size: 13px; font-weight: 600; font-family: var(--f); border: 1px solid var(--border2); cursor: pointer; letter-spacing: -0.02em; transition: all .15s; }
+.btnGhost { display: inline-flex; align-items: center; gap: 7px; padding: 10px 20px; border-radius: 100px; background: transparent; color: var(--text); font-size: 14px; font-weight: 600; font-family: var(--f); border: 1.5px solid var(--border2); cursor: pointer; letter-spacing: -0.02em; transition: all .15s; }
 .btnGhost:hover { background: var(--bg2); color: var(--text); border-color: var(--border3); }
 .btnDarkSm { display: inline-flex; align-items: center; gap: 5px; padding: 8px 17px; border-radius: 100px; background: #0C0C0A; color: #fff; font-size: 13px; font-weight: 600; font-family: var(--f); border: none; cursor: pointer; letter-spacing: -0.01em; transition: opacity .15s; }
 .btnDarkSm:hover { opacity: .72; }
@@ -353,5 +353,28 @@
 .genSeoNote { display: flex; align-items: flex-start; gap: 8px; padding: 10px 14px; background: var(--blue-bg); border: 1px solid var(--blue-bd); border-radius: 8px; font-size: 13px; color: var(--blue); line-height: 1.5; }
 .genSeoNote strong { font-weight: 700; }
 
-/* Nav right for multiple buttons */
-.navRight { display: flex; align-items: center; gap: 8px; }
+
+/* Nav improvements */
+.navRight { display: flex; align-items: center; gap: 10px; }
+.navGenerateBtn { display: inline-flex; align-items: center; gap: 7px; padding: 10px 20px; border-radius: 100px; background: #0C0C0A; color: #fff; font-size: 14px; font-weight: 600; font-family: var(--f); border: none; cursor: pointer; letter-spacing: -0.02em; transition: opacity .15s, transform .1s; }
+.navGenerateBtn:hover { opacity: .82; }
+.navGenerateBtn:active { transform: scale(.97); }
+
+/* Delete button on history items */
+.histDelete { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border2); background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text3); flex-shrink: 0; transition: all .15s; opacity: 0; }
+.histItem:hover .histDelete { opacity: 1; }
+.histDelete:hover { background: var(--red-bg); border-color: var(--red-bd); color: var(--red); }
+
+/* Page selector for multi-page copy */
+.pageTabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+.pageTab { padding: 8px 18px; border-radius: 100px; font-size: 13px; font-weight: 600; font-family: var(--f); border: 1.5px solid var(--border2); background: var(--surface); color: var(--text2); cursor: pointer; transition: all .15s; letter-spacing: -.01em; }
+.pageTab:hover { border-color: var(--border3); color: var(--text); }
+.pageTabActive { background: #0C0C0A !important; color: #fff !important; border-color: #0C0C0A !important; }
+.pageTabAdd { border-style: dashed; }
+
+/* Website type badge */
+.siteTypeBadge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 100px; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.siteTypePortfolio { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-bd); }
+.siteTypeSaas { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-bd); }
+.siteTypeEcom { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-bd); }
+.siteTypeAgency { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-bd); }
