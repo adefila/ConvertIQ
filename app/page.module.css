@@ -10,7 +10,7 @@
 .btnPrimary:active { transform: scale(.97); }
 .btnSecondary { display: inline-flex; align-items: center; gap: 7px; padding: 11px 22px; border-radius: 100px; background: transparent; color: var(--text); font-size: 14px; font-weight: 600; font-family: var(--f); border: 1.5px solid var(--border2); cursor: pointer; letter-spacing: -0.02em; transition: background .15s, border-color .15s; }
 .btnSecondary:hover { background: var(--bg2); border-color: var(--border3); }
-.btnGhost { display: inline-flex; align-items: center; gap: 7px; padding: 10px 20px; border-radius: 100px; background: transparent; color: var(--text); font-size: 14px; font-weight: 600; font-family: var(--f); border: 1.5px solid var(--border2); cursor: pointer; letter-spacing: -0.02em; transition: all .15s; }
+.btnGhost { display: inline-flex; align-items: center; gap: 7px; height: 44px; padding: 0 22px; border-radius: 100px; background: transparent; color: var(--text); font-size: 14px; font-weight: 600; font-family: var(--f); border: 1.5px solid var(--border2); cursor: pointer; letter-spacing: -0.02em; transition: all .15s; white-space: nowrap; }
 .btnGhost:hover { background: var(--bg2); color: var(--text); border-color: var(--border3); }
 .btnDarkSm { display: inline-flex; align-items: center; gap: 5px; padding: 8px 17px; border-radius: 100px; background: #0C0C0A; color: #fff; font-size: 13px; font-weight: 600; font-family: var(--f); border: none; cursor: pointer; letter-spacing: -0.01em; transition: opacity .15s; }
 .btnDarkSm:hover { opacity: .72; }
@@ -238,7 +238,7 @@
 .genForm { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 32px; display: flex; flex-direction: column; gap: 18px; }
 .genField { display: flex; flex-direction: column; gap: 7px; }
 .genLabel { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--text3); }
-.genInput { border: 1.5px solid var(--border2); border-radius: 10px; padding: 12px 16px; font-size: 15px; font-family: var(--f); color: var(--text); background: var(--bg); outline: none; transition: border-color .2s, box-shadow .2s; }
+.genInput { border: 1.5px solid var(--border2); border-radius: 10px; padding: 12px 16px; appearance: none; -webkit-appearance: none; font-size: 15px; font-family: var(--f); color: var(--text); background: var(--bg); outline: none; transition: border-color .2s, box-shadow .2s; }
 .genInput:focus { border-color: #0C0C0A; box-shadow: 0 0 0 3px rgba(12,12,10,.07); }
 .genTa { border: 1.5px solid var(--border2); border-radius: 10px; padding: 12px 16px; font-size: 15px; font-family: var(--f); color: var(--text); background: var(--bg); outline: none; resize: vertical; min-height: 80px; line-height: 1.55; transition: border-color .2s, box-shadow .2s; }
 .genTa:focus { border-color: #0C0C0A; box-shadow: 0 0 0 3px rgba(12,12,10,.07); }
@@ -278,7 +278,7 @@
 .generateForm { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 32px; display: flex; flex-direction: column; gap: 20px; }
 .generateFormTitle { font-size: 18px; font-weight: 600; letter-spacing: -.03em; margin-bottom: 4px; }
 .genInputFilled { border-color: var(--border3) !important; }
-.generateBtn { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 16px 28px; border-radius: 100px; background: #0C0C0A; color: #fff; font-size: 16px; font-weight: 700; font-family: var(--f); border: none; cursor: pointer; letter-spacing: -.02em; transition: opacity .15s, transform .1s; }
+.generateBtn { display: flex; align-items: center; justify-content: center; gap: 10px; height: 52px; padding: 0 32px; border-radius: 100px; background: #0C0C0A; color: #fff; font-size: 15px; font-weight: 700; font-family: var(--f); border: none; cursor: pointer; letter-spacing: -.02em; transition: opacity .15s, transform .1s; width: 100%; }
 .generateBtn:hover:not(:disabled) { opacity: .8; }
 .generateBtn:active:not(:disabled) { transform: scale(.98); }
 .generateBtn:disabled { opacity: .45; cursor: not-allowed; }
@@ -303,7 +303,7 @@
 .generateResultsTitle { font-size: 26px; font-weight: 400; letter-spacing: -.05em; }
 .generateResultsMeta { font-size: 14px; color: var(--text3); margin-top: 4px; }
 .generateResultsActions { display: flex; gap: 10px; }
-.generateResultsFooter { display: flex; gap: 12px; align-items: center; padding-top: 8px; }
+.generateResultsFooter { display: flex; gap: 12px; align-items: center; padding-top: 8px; flex-wrap: wrap; }
 
 /* Conversion score card */
 .conversionScoreCard { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 28px; display: grid; grid-template-columns: 200px 1fr; gap: 32px; align-items: center; }
@@ -356,7 +356,7 @@
 
 /* Nav improvements */
 .navRight { display: flex; align-items: center; gap: 10px; }
-.navGenerateBtn { display: inline-flex; align-items: center; gap: 7px; padding: 10px 20px; border-radius: 100px; background: #0C0C0A; color: #fff; font-size: 14px; font-weight: 600; font-family: var(--f); border: none; cursor: pointer; letter-spacing: -0.02em; transition: opacity .15s, transform .1s; }
+.navGenerateBtn { display: inline-flex; align-items: center; gap: 7px; height: 44px; padding: 0 22px; border-radius: 100px; background: #0C0C0A; color: #fff; font-size: 14px; font-weight: 600; font-family: var(--f); border: none; cursor: pointer; letter-spacing: -0.02em; transition: opacity .15s, transform .1s; white-space: nowrap; }
 .navGenerateBtn:hover { opacity: .82; }
 .navGenerateBtn:active { transform: scale(.97); }
 
@@ -378,3 +378,15 @@
 .siteTypeSaas { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-bd); }
 .siteTypeEcom { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-bd); }
 .siteTypeAgency { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-bd); }
+
+/* Custom select wrapper */
+.selectWrap { position: relative; }
+.selectWrap::after { content: ''; position: absolute; right: 16px; top: 50%; transform: translateY(-50%); width: 10px; height: 6px; background: var(--text2); clip-path: polygon(0 0, 100% 0, 50% 100%); pointer-events: none; }
+.selectWrap select { padding-right: 40px !important; width: 100%; }
+
+/* Quick page buttons after generation */
+.quickPages { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.quickPageBtn { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 16px; border-radius: 100px; background: var(--surface); color: var(--text2); font-size: 13px; font-weight: 600; font-family: var(--f); border: 1.5px solid var(--border2); cursor: pointer; transition: all .15s; white-space: nowrap; }
+.quickPageBtn:hover { background: var(--bg2); border-color: var(--border3); color: var(--text); }
+.quickPageBtnActive { background: #0C0C0A !important; color: #fff !important; border-color: #0C0C0A !important; }
+.quickPagesLabel { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--text3); margin-bottom: 8px; }
