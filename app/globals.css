@@ -1,45 +1,31 @@
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
+/* ── Apple-inspired design tokens ── */
 :root {
-  --f: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
-  --bg: #F7F7F5;
-  --bg2: #EFEFEC;
-  --bg3: #E2E2DE;
+  --f: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  --bg: #F5F5F7;
+  --bg2: #EBEBED;
+  --bg3: #E0E0E2;
   --surface: #FFFFFF;
-  --border: rgba(0,0,0,0.07);
-  --border2: rgba(0,0,0,0.13);
-  --border3: rgba(0,0,0,0.22);
-  --text: #0C0C0A;
-  --text2: #4A4A46;
-  --text3: #8A8A84;
-  --green: #166534;
-  --green-bg: #F0FDF4;
-  --green-bd: rgba(22,101,52,0.2);
-  --amber: #92400E;
+  --border: rgba(0,0,0,.06);
+  --border2: rgba(0,0,0,.1);
+  --border3: rgba(0,0,0,.18);
+  --text: #1D1D1F;
+  --text2: #3D3D3F;
+  --text3: #86868B;
+  --green: #34C759;
+  --green-bg: #F0FFF4;
+  --green-bd: rgba(52,199,89,.2);
+  --amber: #F59E0B;
   --amber-bg: #FFFBEB;
-  --amber-bd: rgba(146,64,14,0.2);
-  --red: #991B1B;
-  --red-bg: #FEF2F2;
-  --red-bd: rgba(153,27,27,0.2);
-  --blue: #1E3A8A;
-  --blue-bg: #EFF6FF;
-  --blue-bd: rgba(30,58,138,0.2);
+  --amber-bd: rgba(245,158,11,.2);
+  --red: #FF3B30;
+  --red-bg: #FFF5F5;
+  --red-bd: rgba(255,59,48,.2);
+  --blue: #0A84FF;
+  --blue-bg: #F0F7FF;
+  --blue-bd: rgba(10,132,255,.2);
 }
 
-html { scroll-behavior: smooth; }
-
-body {
-  font-family: var(--f);
-  background: var(--bg);
-  color: var(--text);
-  font-size: 16px;
-  line-height: 1.6;
-  letter-spacing: -0.01em;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  min-height: 100vh;
-}
-
-input, textarea, button, select {
-  font-family: var(--f);
-}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+body { font-family: var(--f); background: var(--bg); color: var(--text); }
+input, textarea, select, button { font-family: var(--f); }
