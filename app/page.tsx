@@ -246,6 +246,7 @@ export default function Page() {
   const [genLoading, setGenLoading] = useState(false)
   const [genResult, setGenResult] = useState<GeneratedCopy | null>(null)
   const [activePage, setActivePage] = useState('Home')
+  const [selectedOtherPage, setSelectedOtherPage] = useState('')
   const [genForm, setGenForm] = useState({
     projectName: '', industry: '', targetAudience: '',
     mainOffer: '', keyBenefits: '', tone: 'professional',
@@ -443,20 +444,22 @@ export default function Page() {
   return (
     <div>
       <nav className={styles.nav}>
-        <div className={styles.brand} onClick={() => setScreen('home')}>
-          <div className={styles.brandDot} />ConvertIQ
-        </div>
-        <div className={styles.navRight}>
-          <button className={styles.navGenerateBtn} onClick={() => { setScreen('generate'); setGenResult(null); setGenForm({projectName:'',industry:'',targetAudience:'',mainOffer:'',keyBenefits:'',tone:'professional',primaryKeyword:'',secondaryKeywords:''}); setActivePage('Home') }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-            Generate Copy
-          </button>
-          <button className={styles.btnGhost} onClick={() => { setSavedAudits(loadAudits()); setShowHistory(true) }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-            </svg>
-            Saved Audits
-          </button>
+        <div className={styles.navInner}>
+          <div className={styles.brand} onClick={() => setScreen('home')}>
+            <div className={styles.brandDot} />ConvertIQ
+          </div>
+          <div className={styles.navRight}>
+            <button className={styles.navGenerateBtn} onClick={() => { setScreen('generate'); setGenResult(null); setGenForm({projectName:'',industry:'',targetAudience:'',mainOffer:'',keyBenefits:'',tone:'professional',primaryKeyword:'',secondaryKeywords:''}); setActivePage('Home') }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              Generate Copy
+            </button>
+            <button className={styles.btnGhost} onClick={() => { setSavedAudits(loadAudits()); setShowHistory(true) }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+              </svg>
+              Saved Audits
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -880,14 +883,14 @@ export default function Page() {
                     </div>
                   ) : loadSavedCopies().map((c, i) => (
                     <div key={i} className={styles.sidebarItem}>
-                      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:8}}>
-                        <div className={styles.sidebarItemName} style={{cursor:'pointer'}} onClick={() => { setGenResult(c.data); setGenForm(c.form); setActivePage('Home') }}>{c.form.projectName}</div>
-                        <div style={{display:'flex', alignItems:'center', gap:6}}>
-                          <div className={styles.sidebarScore} style={{color: scoreColor(c.conversionScore), position:'static', transform:'none'}}>
-                            {c.conversionScore}<span style={{fontSize:11,opacity:.6}}>/100</span>
+                      <div className={styles.sidebarItemRow}>
+                        <div className={styles.sidebarItemName} onClick={() => { setGenResult(c.data); setGenForm(c.form); setActivePage('Home') }}>{c.form.projectName}</div>
+                        <div className={styles.sidebarActions}>
+                          <div className={styles.sidebarScore} style={{color: scoreColor(c.conversionScore)}}>
+                            {c.conversionScore}<span style={{fontSize:11,opacity:.5}}>/100</span>
                           </div>
-                          <button className={styles.histDelete} onClick={(e) => deleteCopy(c.form.projectName, e)} title="Delete" style={{opacity:1,position:'static',transform:'none'}}>
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <button className={styles.sidebarDeleteBtn} onClick={(e) => deleteCopy(c.form.projectName, e)} title="Delete">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                               <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                             </svg>
                           </button>
@@ -895,9 +898,9 @@ export default function Page() {
                       </div>
                       <div className={styles.sidebarItemMeta}>{c.form.industry} · {daysLeft(c.ts)}d left</div>
                       {c.pages && Object.keys(c.pages).length > 0 && (
-                        <div style={{display:'flex', flexWrap:'wrap', gap:4, marginTop:6}}>
+                        <div className={styles.sidebarPages}>
                           {Object.keys(c.pages).map(page => (
-                            <button key={page} style={{fontSize:11,fontWeight:600,padding:'3px 9px',borderRadius:100,border:'1px solid var(--border2)',background:'var(--bg2)',color:'var(--text2)',cursor:'pointer',fontFamily:'var(--f)'}}
+                            <button key={page} className={styles.sidebarPageBtn}
                               onClick={() => { setGenResult(c.pages![page]); setGenForm(c.form); setActivePage(page) }}>
                               {page}
                             </button>
@@ -1022,11 +1025,11 @@ export default function Page() {
                       <div className={styles.genSectionBody}>
                         {sec.headline && <div className={styles.genCopyRow}><span className={styles.genCopyLbl}>Headline</span><span className={styles.genCopyVal}>{sec.headline}</span></div>}
                         {sec.subheadline && <div className={styles.genCopyRow}><span className={styles.genCopyLbl}>Subheadline</span><span className={styles.genCopyVal}>{sec.subheadline}</span></div>}
-                        {sec.cta_primary && <div className={styles.genCopyRow}><span className={styles.genCopyLbl}>Primary CTA</span><span className={`${styles.genCopyVal} ${styles.genCopyValCta}`}>{sec.cta_primary}</span></div>}
+                        {sec.cta_primary && <div className={styles.genCopyRow}><span className={styles.genCopyLbl}>Primary CTA</span><span className={styles.genCopyVal}>{sec.cta_primary}</span></div>}
                         {sec.cta_secondary && <div className={styles.genCopyRow}><span className={styles.genCopyLbl}>Secondary CTA</span><span className={styles.genCopyVal}>{sec.cta_secondary}</span></div>}
                         {sec.body && <div className={styles.genCopyRow}><span className={styles.genCopyLbl}>Body</span><span className={styles.genCopyVal}>{sec.body}</span></div>}
                         {sec.copy && <div className={styles.genCopyRow}><span className={styles.genCopyLbl}>Copy</span><span className={styles.genCopyVal}>{sec.copy}</span></div>}
-                        {sec.cta && <div className={styles.genCopyRow}><span className={styles.genCopyLbl}>CTA</span><span className={`${styles.genCopyVal} ${styles.genCopyValCta}`}>{sec.cta}</span></div>}
+                        {sec.cta && <div className={styles.genCopyRow}><span className={styles.genCopyLbl}>CTA</span><span className={styles.genCopyVal}>{sec.cta}</span></div>}
                         {sec.guarantee && <div className={styles.genCopyRow}><span className={styles.genCopyLbl}>Guarantee</span><span className={styles.genCopyVal}>{sec.guarantee}</span></div>}
                         {sec.items && (
                           <div className={styles.genItemsList}>
@@ -1072,50 +1075,61 @@ export default function Page() {
                 })}
 
                 <div className={styles.generateResultsFooter}>
-                  <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <div>
-                      <div className={styles.quickPagesLabel}>Generate another page instantly</div>
-                      <div className={styles.quickPages}>
-                        {['Home', 'About', 'Services', 'Pricing', 'Contact', 'Case Studies', 'Portfolio', 'Landing Page']
-                          .filter(p => p !== activePage)
-                          .map(p => (
-                            <button
-                              key={p}
-                              className={styles.quickPageBtn}
-                              onClick={() => {
-                                setActivePage(p)
-                                setGenResult(null)
-                                setGenLoading(true)
-                                fetch('/api/generate-copy', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ ...genForm, pageType: p }),
-                                }).then(r => r.text()).then(text => {
-                                  try {
-                                    const d = JSON.parse(text) as { result?: GeneratedCopy }
-                                    if (d.result) setGenResult(d.result)
-                                  } catch { /* silent */ }
-                                  setGenLoading(false)
-                                }).catch(() => setGenLoading(false))
-                              }}
-                            >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                              {p}
-                            </button>
-                          ))}
+                  {/* Other pages dropdown */}
+                  <div>
+                    <div className={styles.quickPagesLabel}>Would you like to generate another page?</div>
+                    <div className={styles.quickPagesRow}>
+                      <div className={styles.quickPagesSelectWrap}>
+                        <select
+                          className={styles.quickPagesSelect}
+                          value={selectedOtherPage}
+                          onChange={e => setSelectedOtherPage(e.target.value)}
+                        >
+                          <option value="">Select a page…</option>
+                          {['Home', 'About', 'Services', 'Pricing', 'Contact', 'Case Studies', 'Portfolio', 'Blog', 'Landing Page']
+                            .filter(p => p !== activePage)
+                            .map(p => <option key={p} value={p}>{p}</option>)}
+                        </select>
                       </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 10 }}>
-                      <button className={styles.navGenerateBtn} style={{ flex: 1, justifyContent: 'center' }} onClick={() => {
-                        const score = calcConversionScore(genResult!)
-                        saveCopyResult({ form: genForm, data: genResult!, conversionScore: score, ts: Date.now() }, activePage, genResult!)
-                        setCopiedId('saved-confirm')
-                        setTimeout(() => setCopiedId(null), 2000)
-                      }}>
-                        {copiedId === 'saved-confirm' ? '✓ Saved for 15 days' : '↓ Save Copy'}
+                      <button
+                        className={styles.btnPrimary}
+                        disabled={!selectedOtherPage || genLoading}
+                        style={{ opacity: !selectedOtherPage ? .4 : 1 }}
+                        onClick={() => {
+                          if (!selectedOtherPage) return
+                          const page = selectedOtherPage
+                          setActivePage(page)
+                          setSelectedOtherPage('')
+                          setGenResult(null)
+                          setGenLoading(true)
+                          fetch('/api/generate-copy', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ ...genForm, pageType: page }),
+                          }).then(r => r.text()).then(text => {
+                            try {
+                              const d = JSON.parse(text) as { result?: GeneratedCopy }
+                              if (d.result) setGenResult(d.result)
+                            } catch { /* silent */ }
+                            setGenLoading(false)
+                          }).catch(() => setGenLoading(false))
+                        }}
+                      >
+                        {genLoading ? <><span className={styles.generateSpinner} />Generating…</> : 'Generate'}
                       </button>
-                      <button className={styles.btnGhost} onClick={() => { setGenResult(null) }}>Edit details</button>
                     </div>
+                  </div>
+                  {/* Action buttons */}
+                  <div className={styles.footerActions}>
+                    <button className={styles.btnPrimary} style={{ flex: 1, justifyContent: 'center' }} onClick={() => {
+                      const score = calcConversionScore(genResult!)
+                      saveCopyResult({ form: genForm, data: genResult!, conversionScore: score, ts: Date.now() }, activePage, genResult!)
+                      setCopiedId('saved-confirm')
+                      setTimeout(() => setCopiedId(null), 2000)
+                    }}>
+                      {copiedId === 'saved-confirm' ? '✓ Saved for 15 days' : 'Save Copy'}
+                    </button>
+                    <button className={styles.btnGhost} onClick={() => { setGenResult(null) }}>Edit details</button>
                   </div>
                 </div>
               </div>
