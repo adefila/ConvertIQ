@@ -29,7 +29,7 @@ interface SavedAudit { url: string; display: string; data: AuditResult; overall:
 interface GeneratedCopySection { name: string; copy?: string; headline?: string; subheadline?: string; cta_primary?: string; cta_secondary?: string; body?: string; items?: Record<string, string>[]; steps?: Record<string, string>[]; tiers?: Record<string, unknown>[]; guarantee?: string; cta?: string; seo_note?: string }
 interface GeneratedCopy { meta: { title: string; description: string }; siteType?: string; conversionTips?: string[]; sections: GeneratedCopySection[] }
 
-interface SavedCopy { form: typeof genFormDefault; data: GeneratedCopy; conversionScore: number; ts: number }
+interface SavedCopy { form: typeof genFormDefault; data: GeneratedCopy; conversionScore: number; ts: number; pages?: Record<string, GeneratedCopy> }
 
 const TTL = 15 * 24 * 60 * 60 * 1000
 
@@ -43,9 +43,13 @@ function loadSavedCopies(): SavedCopy[] {
   } catch { return [] }
 }
 
-function saveCopyResult(entry: SavedCopy) {
+function saveCopyResult(entry: SavedCopy, pageType?: string, pageData?: GeneratedCopy) {
+  const existing = loadSavedCopies().find(c => c.form.projectName === entry.form.projectName)
+  const pages = existing?.pages ?? {}
+  if (pageType && pageData) pages[pageType] = pageData
+  const updated = { ...entry, pages }
   const list = loadSavedCopies().filter(c => c.form.projectName !== entry.form.projectName)
-  list.unshift(entry)
+  list.unshift(updated)
   try { localStorage.setItem('ciq_copies_v1', JSON.stringify(list.slice(0, 10))) } catch {}
 }
 
@@ -443,7 +447,7 @@ export default function Page() {
           <div className={styles.brandDot} />ConvertIQ
         </div>
         <div className={styles.navRight}>
-          <button className={styles.navGenerateBtn} onClick={() => setScreen('generate')}>
+          <button className={styles.navGenerateBtn} onClick={() => { setScreen('generate'); setGenResult(null); setGenForm({projectName:'',industry:'',targetAudience:'',mainOffer:'',keyBenefits:'',tone:'professional',primaryKeyword:'',secondaryKeywords:''}); setActivePage('Home') }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
             Generate Copy
           </button>
@@ -770,7 +774,6 @@ export default function Page() {
                 Back
               </button>
               <div className={styles.generateTitle}>
-                <div className={styles.generateTitleIcon}>✦</div>
                 <div>
                   <div className={styles.generateTitleText}>Generate Full Website Copy</div>
                   <div className={styles.generateTitleSub}>Word-for-word copy for every section — SEO optimised and conversion-ready</div>
@@ -876,17 +879,31 @@ export default function Page() {
                       <p>No saved copies yet</p>
                     </div>
                   ) : loadSavedCopies().map((c, i) => (
-                    <div key={i} className={styles.sidebarItem} onClick={() => { setGenResult(c.data); setGenForm(c.form); setActivePage('Home') }}>
-                      <div className={styles.sidebarItemName}>{c.form.projectName}</div>
-                      <div className={styles.sidebarItemMeta}>{c.form.industry} · {daysLeft(c.ts)}d left</div>
-                      <div className={styles.sidebarScore} style={{color: scoreColor(c.conversionScore)}}>
-                        {c.conversionScore}<span style={{fontSize:11,opacity:.6}}>/100</span>
+                    <div key={i} className={styles.sidebarItem}>
+                      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:8}}>
+                        <div className={styles.sidebarItemName} style={{cursor:'pointer'}} onClick={() => { setGenResult(c.data); setGenForm(c.form); setActivePage('Home') }}>{c.form.projectName}</div>
+                        <div style={{display:'flex', alignItems:'center', gap:6}}>
+                          <div className={styles.sidebarScore} style={{color: scoreColor(c.conversionScore), position:'static', transform:'none'}}>
+                            {c.conversionScore}<span style={{fontSize:11,opacity:.6}}>/100</span>
+                          </div>
+                          <button className={styles.histDelete} onClick={(e) => deleteCopy(c.form.projectName, e)} title="Delete" style={{opacity:1,position:'static',transform:'none'}}>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                          </button>
+                        </div>
                       </div>
-                      <button className={styles.histDelete} onClick={(e) => deleteCopy(c.form.projectName, e)} title="Delete" style={{position:'absolute',right:0,top:'50%',transform:'translateY(-50%)'}}>
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                        </svg>
-                      </button>
+                      <div className={styles.sidebarItemMeta}>{c.form.industry} · {daysLeft(c.ts)}d left</div>
+                      {c.pages && Object.keys(c.pages).length > 0 && (
+                        <div style={{display:'flex', flexWrap:'wrap', gap:4, marginTop:6}}>
+                          {Object.keys(c.pages).map(page => (
+                            <button key={page} style={{fontSize:11,fontWeight:600,padding:'3px 9px',borderRadius:100,border:'1px solid var(--border2)',background:'var(--bg2)',color:'var(--text2)',cursor:'pointer',fontFamily:'var(--f)'}}
+                              onClick={() => { setGenResult(c.pages![page]); setGenForm(c.form); setActivePage(page) }}>
+                              {page}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1091,7 +1108,7 @@ export default function Page() {
                     <div style={{ display: 'flex', gap: 10 }}>
                       <button className={styles.navGenerateBtn} style={{ flex: 1, justifyContent: 'center' }} onClick={() => {
                         const score = calcConversionScore(genResult!)
-                        saveCopyResult({ form: genForm, data: genResult!, conversionScore: score, ts: Date.now() })
+                        saveCopyResult({ form: genForm, data: genResult!, conversionScore: score, ts: Date.now() }, activePage, genResult!)
                         setCopiedId('saved-confirm')
                         setTimeout(() => setCopiedId(null), 2000)
                       }}>
