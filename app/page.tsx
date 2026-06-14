@@ -449,7 +449,7 @@ export default function Page() {
             <div className={styles.brandDot} />ConvertIQ
           </div>
           <div className={styles.navRight}>
-            <button className={styles.navGenerateBtn} onClick={() => { setScreen('generate'); setGenResult(null); setGenForm({projectName:'',industry:'',targetAudience:'',mainOffer:'',keyBenefits:'',tone:'professional',primaryKeyword:'',secondaryKeywords:''}); setActivePage('Home') }}>
+            <button className={styles.navGenerateBtn} onClick={() => { setScreen('generate'); setGenResult(null); setGenForm({ projectName: '', industry: '', targetAudience: '', mainOffer: '', keyBenefits: '', tone: 'professional', primaryKeyword: '', secondaryKeywords: '' }); setActivePage('Home') }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
               Generate Copy
             </button>
@@ -810,37 +810,37 @@ export default function Page() {
                   <div className={styles.genRow}>
                     <div className={styles.genField}>
                       <label className={styles.genLabel}>Project / Brand Name <span style={{color:'var(--red)'}}>*</span></label>
-                      <input className={`${styles.genInput} ${genForm.projectName ? styles.genInputFilled : ''}`} placeholder="e.g. FlowPilot" value={genForm.projectName} onChange={e => setGenForm(f => ({ ...f, projectName: e.target.value }))} />
+                      <input className={styles.genInput} placeholder="e.g. FlowPilot" value={genForm.projectName} onChange={e => setGenForm(f => ({ ...f, projectName: e.target.value }))} />
                     </div>
                     <div className={styles.genField}>
                       <label className={styles.genLabel}>Industry</label>
-                      <input className={`${styles.genInput} ${genForm.industry ? styles.genInputFilled : ''}`} placeholder="e.g. SaaS, Agency, E-commerce" value={genForm.industry} onChange={e => setGenForm(f => ({ ...f, industry: e.target.value }))} />
+                      <input className={styles.genInput} placeholder="e.g. SaaS, Agency, E-commerce" value={genForm.industry} onChange={e => setGenForm(f => ({ ...f, industry: e.target.value }))} />
                     </div>
                   </div>
 
                   <div className={styles.genField}>
                     <label className={styles.genLabel}>Target Audience</label>
-                    <input className={`${styles.genInput} ${genForm.targetAudience ? styles.genInputFilled : ''}`} placeholder="e.g. Startup founders with 0-10k MRR looking to reduce churn" value={genForm.targetAudience} onChange={e => setGenForm(f => ({ ...f, targetAudience: e.target.value }))} />
+                    <input className={styles.genInput} placeholder="e.g. Startup founders with 0-10k MRR looking to reduce churn" value={genForm.targetAudience} onChange={e => setGenForm(f => ({ ...f, targetAudience: e.target.value }))} />
                   </div>
 
                   <div className={styles.genField}>
                     <label className={styles.genLabel}>Main Offer <span style={{color:'var(--red)'}}>*</span></label>
-                    <textarea className={`${styles.genTa} ${genForm.mainOffer ? styles.genInputFilled : ''}`} placeholder="What exactly are you selling? What does the customer get and what outcome do they achieve?" value={genForm.mainOffer} onChange={e => setGenForm(f => ({ ...f, mainOffer: e.target.value }))} />
+                    <textarea className={styles.genTa} placeholder="What exactly are you selling? What does the customer get and what outcome do they achieve?" value={genForm.mainOffer} onChange={e => setGenForm(f => ({ ...f, mainOffer: e.target.value }))} />
                   </div>
 
                   <div className={styles.genField}>
                     <label className={styles.genLabel}>Key Benefits / Differentiators</label>
-                    <textarea className={`${styles.genTa} ${genForm.keyBenefits ? styles.genInputFilled : ''}`} placeholder="List 3-5 specific outcomes or benefits&#10;e.g. Automate workflows without coding&#10;Save 15+ hours per week&#10;No technical skills required" value={genForm.keyBenefits} onChange={e => setGenForm(f => ({ ...f, keyBenefits: e.target.value }))} />
+                    <textarea className={styles.genTa} placeholder="List 3-5 specific outcomes or benefits&#10;e.g. Automate workflows without coding&#10;Save 15+ hours per week&#10;No technical skills required" value={genForm.keyBenefits} onChange={e => setGenForm(f => ({ ...f, keyBenefits: e.target.value }))} />
                   </div>
 
                   <div className={styles.genRow}>
                     <div className={styles.genField}>
                       <label className={styles.genLabel}>Primary SEO Keyword</label>
-                      <input className={`${styles.genInput} ${genForm.primaryKeyword ? styles.genInputFilled : ''}`} placeholder="e.g. AI workflow automation" value={genForm.primaryKeyword} onChange={e => setGenForm(f => ({ ...f, primaryKeyword: e.target.value }))} />
+                      <input className={styles.genInput} placeholder="e.g. AI workflow automation" value={genForm.primaryKeyword} onChange={e => setGenForm(f => ({ ...f, primaryKeyword: e.target.value }))} />
                     </div>
                     <div className={styles.genField}>
                       <label className={styles.genLabel}>Secondary Keywords</label>
-                      <input className={`${styles.genInput} ${genForm.secondaryKeywords ? styles.genInputFilled : ''}`} placeholder="e.g. team productivity, no-code automation" value={genForm.secondaryKeywords} onChange={e => setGenForm(f => ({ ...f, secondaryKeywords: e.target.value }))} />
+                      <input className={styles.genInput} placeholder="e.g. team productivity, no-code automation" value={genForm.secondaryKeywords} onChange={e => setGenForm(f => ({ ...f, secondaryKeywords: e.target.value }))} />
                     </div>
                   </div>
 
