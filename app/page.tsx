@@ -790,17 +790,20 @@ export default function Page() {
                 <div className={styles.generateForm}>
                   <div className={styles.generateFormTitle}>Project Details</div>
 
-                  {/* Page selector */}
+                  {/* Page selector — clean dropdown */}
                   <div className={styles.genField}>
                     <label className={styles.genLabel}>Which page are you writing copy for?</label>
-                    <div className={styles.pageTabs}>
-                      {['Home', 'About', 'Services', 'Pricing', 'Contact', 'Case Studies', 'Portfolio', 'Blog', 'Landing Page'].map(p => (
-                        <button
-                          key={p}
-                          className={`${styles.pageTab} ${activePage === p ? styles.pageTabActive : ''}`}
-                          onClick={() => setActivePage(p)}
-                        >{p}</button>
-                      ))}
+                    <div className={styles.selectWrap}>
+                      <select
+                        className={styles.genInput}
+                        value={activePage}
+                        onChange={e => setActivePage(e.target.value)}
+                        style={{ paddingRight: 44 }}
+                      >
+                        {['Home', 'About', 'Services', 'Pricing', 'Contact', 'Case Studies', 'Portfolio', 'Blog', 'Landing Page'].map(p => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
 
