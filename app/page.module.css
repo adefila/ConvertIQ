@@ -908,3 +908,230 @@
   .prevRow    { gap: 8px; }
   .prevCard   { min-width: 110px; padding: 14px 16px; }
 }
+
+/* ══════════════════════════════════════════
+   WORD DIFF
+══════════════════════════════════════════ */
+.diffAdded {
+  background: rgba(22,163,74,.12);
+  color: var(--green);
+  border-radius: 3px;
+  padding: 0 2px;
+}
+.diffRemoved {
+  background: rgba(220,38,38,.09);
+  color: var(--red);
+  border-radius: 3px;
+  padding: 0 2px;
+  text-decoration: line-through;
+  text-decoration-color: var(--red);
+}
+.diffAddedInline {
+  background: rgba(22,163,74,.12);
+  color: var(--green);
+  border-radius: 3px;
+  padding: 0 4px;
+  font-size: 12px;
+}
+.diffRemovedInline {
+  background: rgba(220,38,38,.09);
+  color: var(--red);
+  border-radius: 3px;
+  padding: 0 4px;
+  font-size: 12px;
+  text-decoration: line-through;
+}
+
+/* ══════════════════════════════════════════
+   COMPARE TOGGLE / EXAMPLE BUTTON
+══════════════════════════════════════════ */
+.compareToggleRow {
+  display: flex; align-items: center; gap: 12px;
+  margin-top: 10px; flex-wrap: wrap;
+}
+.compareToggleBtn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 14px; border-radius: var(--r-pill);
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  border: 1px solid var(--border2); background: transparent; color: var(--text2);
+  transition: all .18s;
+}
+.compareToggleBtn:hover { background: var(--bg3); color: var(--text); border-color: var(--border3); }
+.compareToggleOn { background: var(--blue-bg); color: var(--blue); border-color: var(--blue-bd); }
+.compareToggleOn:hover { background: var(--blue); color: #fff; border-color: transparent; }
+
+.exampleBtn {
+  height: 32px; padding: 0 14px; border-radius: var(--r-pill);
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  border: none; background: transparent; color: var(--text3);
+  transition: color .18s; text-decoration: underline; text-underline-offset: 3px;
+  text-decoration-color: transparent;
+}
+.exampleBtn:hover { color: var(--accent); text-decoration-color: var(--accent-bd); }
+
+.compareInputWrap {
+  margin-top: 12px; display: flex; flex-direction: column; gap: 6px;
+  width: 100%; max-width: 640px;
+}
+.compareInputLabel {
+  font-size: 12px; font-weight: 600; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--text3);
+}
+
+/* ══════════════════════════════════════════
+   COMPARE RESULTS
+══════════════════════════════════════════ */
+.compareBanner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 13px 16px; border-radius: var(--r-lg);
+  font-size: 14px; font-weight: 500; margin-bottom: 20px;
+  border: 1px solid;
+}
+.compareBannerWin {
+  background: var(--green-bg); color: var(--green);
+  border-color: var(--green-bd);
+}
+.compareBannerLose {
+  background: var(--red-bg); color: var(--red);
+  border-color: var(--red-bd);
+}
+
+.compareGrid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;
+}
+.compareCol {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--r-xl); padding: 20px; display: flex; flex-direction: column; gap: 10px;
+}
+.compareColHead {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; font-weight: 600; color: var(--text);
+  padding-bottom: 12px; border-bottom: 1px solid var(--border);
+}
+.compareOverallScore {
+  margin-left: auto; font-size: 22px; font-weight: 700; letter-spacing: -0.04em;
+}
+.compareRow {
+  display: flex; align-items: center; gap: 10px; padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.compareRow:last-child { border-bottom: none; }
+.compareRowWin { }
+.compareRowLose { }
+.compareRowLabel { font-size: 13px; color: var(--text2); width: 100px; flex-shrink: 0; }
+.compareRowScore { font-size: 15px; font-weight: 700; width: 30px; flex-shrink: 0; }
+.compareBar { flex: 1; height: 5px; background: var(--bg3); border-radius: var(--r-pill); overflow: hidden; }
+.compareBarFill { height: 100%; border-radius: var(--r-pill); transition: width .5s ease; }
+
+.vsLabel {
+  font-size: 11px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--text3); padding: 0 2px;
+}
+
+.scCompare {
+  font-size: 11px; font-weight: 700; margin-top: 2px;
+}
+
+/* ══════════════════════════════════════════
+   EMAIL GATE MODAL
+══════════════════════════════════════════ */
+.emailGateOverlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0,0,0,.35);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.emailGateCard {
+  background: var(--bg2); border-radius: var(--r-2xl);
+  border: 1px solid var(--border2);
+  padding: 36px 32px 28px;
+  max-width: 420px; width: 100%;
+  box-shadow: 0 24px 64px rgba(0,0,0,.12);
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  text-align: center;
+}
+.emailGateIcon {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: var(--accent-bg); border: 1px solid var(--accent-bd);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 4px;
+}
+.emailGateTitle {
+  font-size: 20px; font-weight: 700; letter-spacing: -0.03em;
+  color: var(--text);
+}
+.emailGateSub {
+  font-size: 14px; color: var(--text2); line-height: 1.5; margin-bottom: 6px;
+}
+.emailGateInput {
+  width: 100%; height: 44px; padding: 0 16px;
+  border-radius: var(--r-lg);
+  border: 1.5px solid var(--border2); background: var(--bg);
+  font-size: 14px; color: var(--text); outline: none;
+  transition: border-color .18s; font-family: var(--f);
+  margin-bottom: 4px;
+}
+.emailGateInput:focus { border-color: var(--accent); }
+.emailGateSkip {
+  background: none; border: none; cursor: pointer;
+  font-size: 13px; color: var(--text3); margin-top: 6px;
+  text-decoration: underline; text-underline-offset: 3px;
+  text-decoration-color: transparent; transition: color .18s;
+  font-family: var(--f);
+}
+.emailGateSkip:hover { color: var(--text2); text-decoration-color: var(--border2); }
+
+/* ══════════════════════════════════════════
+   SITE TYPE BADGE
+══════════════════════════════════════════ */
+.siteTypeBadge {
+  display: inline-flex; align-items: center;
+  height: 18px; padding: 0 7px;
+  border-radius: var(--r-pill);
+  font-size: 10px; font-weight: 700; letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.siteTypeSaas  { background: var(--blue-bg);  color: var(--blue);  border: 1px solid var(--blue-bd); }
+.siteTypeEcom  { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-bd); }
+.siteTypeAgency { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-bd); }
+.siteTypePortfolio { background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent-bd); }
+
+/* ══════════════════════════════════════════
+   FETCH WARNING BANNER
+══════════════════════════════════════════ */
+.fetchWarnBanner {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 20px; font-size: 13px; color: var(--amber);
+  background: var(--amber-bg); border-bottom: 1px solid var(--amber-bd);
+}
+.fetchWarnBanner strong { color: var(--text); }
+
+/* ══════════════════════════════════════════
+   @MEDIA PRINT
+══════════════════════════════════════════ */
+@media print {
+  .nav,
+  .tabRow,
+  .resActions,
+  .drawerOverlay,
+  .emailGateOverlay,
+  .compareToggleRow,
+  .homeWrap,
+  .generateScreen { display: none !important; }
+
+  .results { display: block !important; }
+  .scoreStrip { break-inside: avoid; }
+  .panel { padding: 0; }
+  .sectionCard { break-inside: avoid; page-break-inside: avoid; }
+  .sectionBody { display: block !important; }
+  .copyPairGrid { grid-template-columns: 1fr 1fr; }
+}
+
+/* ══════════════════════════════════════════
+   RESPONSIVE — COMPARE + EMAIL GATE
+══════════════════════════════════════════ */
+@media (max-width: 680px) {
+  .compareGrid { grid-template-columns: 1fr; }
+  .emailGateCard { padding: 28px 20px 24px; }
+}

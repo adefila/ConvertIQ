@@ -35,6 +35,97 @@ const TTL = 15 * 24 * 60 * 60 * 1000
 
 const genFormDefault = { projectName: '', industry: '', targetAudience: '', mainOffer: '', keyBenefits: '', tone: 'professional', primaryKeyword: '', secondaryKeywords: '' }
 
+// ── Example audit for demo ────────────────────────────────────────────────
+const EXAMPLE_AUDIT: AuditResult = {
+  scores: { conversion: 51, ux: 68, cta: 42, trust: 58, mobile: 64 },
+  score_notes: {
+    conversion: 'Weak hero CTA, no pricing anchor above fold',
+    ux: 'Clean layout but navigation has too many items',
+    cta: "Generic 'Get started' lacks specificity and urgency",
+    trust: 'No logos or metrics visible in hero section',
+    mobile: 'Hero text truncates on small screens',
+  },
+  sections: [
+    {
+      name: 'Navigation',
+      score: 72,
+      what_we_found: '8-item nav with no sticky CTA. Mobile collapses to hamburger with no visible action.',
+      issues: [
+        { severity: 'medium', what: 'No CTA in nav on mobile', why: '42% of visitors on mobile see zero conversion path in the nav bar', fix: "Pin a sticky 'Start free trial' pill in the mobile nav — even a small button outperforms nothing by 2–3×." },
+        { severity: 'low', what: 'Too many links dilute focus', why: "Hick's Law: more choices = slower decisions and higher abandonment", fix: 'Reduce to 4 links max: Product, Pricing, Customers, Login.' },
+      ],
+      copy_rewrite: { label: 'Nav CTA', original: 'Get started', improved: 'Start free — no card needed' },
+    },
+    {
+      name: 'Hero',
+      score: 44,
+      what_we_found: 'Headline is feature-led, not outcome-led. Sub-copy is 52 words — too long. No social proof visible.',
+      issues: [
+        { severity: 'high', what: 'Headline focuses on features, not outcomes', why: 'Visitors decide in 5 seconds — they need to see their result, not your product features', fix: "Lead with the outcome: 'Close 30% more deals without extra headcount' vs 'The CRM built for growing teams'." },
+        { severity: 'high', what: 'No social proof above the fold', why: 'Trust anchors in the hero reduce bounce by 15–25% according to CXL research', fix: "Add 'Trusted by 2,000+ sales teams' with 3–4 customer logo lockup directly under the headline." },
+        { severity: 'medium', what: 'CTA copy is generic', why: "'Get started' triggers no emotion or urgency — it signals effort, not reward", fix: "Use 'See your pipeline in 2 minutes' or 'Try free for 14 days — set up in 2 min'." },
+      ],
+      copy_rewrite: { label: 'Hero headline', original: 'The CRM built for growing teams', improved: 'Close 30% more deals — without adding headcount' },
+    },
+    {
+      name: 'Social Proof',
+      score: 55,
+      what_we_found: '3 testimonials present but all lack specific metrics. No company logos visible at a glance.',
+      issues: [
+        { severity: 'high', what: 'Testimonials have no specific numbers', why: 'Vague praise is ignored; specific before/after metrics are believed and shared', fix: "Add outcome metrics: 'Went from 12% to 34% close rate in 90 days' instead of 'Really helpful tool'." },
+        { severity: 'medium', what: 'No video testimonial', why: 'Video social proof converts 3× better than text-only testimonials', fix: 'Add one 60-second customer video — a phone recording from a happy customer works fine.' },
+      ],
+      copy_rewrite: { label: 'Testimonial', original: 'Really great CRM, helped our team a lot.', improved: 'We hit $2M ARR in 6 months. NexusCRM made our pipeline visible for the first time.' },
+    },
+    {
+      name: 'Pricing',
+      score: 59,
+      what_we_found: '3-tier pricing shown but annual discount is not clearly surfaced. Free plan buried at bottom.',
+      issues: [
+        { severity: 'high', what: 'Annual discount not surfaced prominently', why: 'Anchoring annual pricing prominently drives 30–40% more annual subscriptions', fix: "Add a toggle 'Monthly / Annual — save 20%' at the very top of the pricing section, pre-selected on annual." },
+        { severity: 'medium', what: 'Free plan not positioned as entry point', why: 'Free plans reduce purchase anxiety for high-intent users who need more time', fix: "Feature the free plan first with a 'No credit card' label, then show paid tiers as upgrades." },
+      ],
+      copy_rewrite: { label: 'Pricing CTA', original: 'Choose your plan', improved: 'Start free — upgrade when you are ready' },
+    },
+    {
+      name: 'Footer',
+      score: 38,
+      what_we_found: 'Footer is purely links — no CTA, no trust signals, no value reinforcement. Dead conversion space.',
+      issues: [
+        { severity: 'high', what: 'Footer has no conversion CTA', why: 'Users who scroll to the footer are highly engaged — this is prime real estate being wasted', fix: "Add a bold footer CTA section: 'Ready to see your pipeline? Start free today' with primary button." },
+        { severity: 'low', what: 'No trust badges in footer', why: 'SOC 2, GDPR, and payment badges in footer reduce last-moment abandonment', fix: 'Add security badges, money-back guarantee, and review platform stars.' },
+      ],
+      copy_rewrite: { label: 'Footer CTA', original: '', improved: 'Join 2,000+ sales teams closing more deals. Start free today — no credit card required.' },
+    },
+  ],
+  overall_issues: [
+    { severity: 'high', title: 'No urgency mechanism anywhere on the page', description: 'Nothing creates FOMO or time pressure. Visitors leave intending to return — and never do.', fix: "Add 'Limited beta seats' or a 14-day trial countdown to increase same-session conversion." },
+    { severity: 'medium', title: 'Exit intent not captured', description: 'No email capture or offer shown when visitors show leaving behaviour.', fix: "Trigger a simple exit-intent popup: 'Before you go — grab the free CRM setup guide'." },
+    { severity: 'low', title: 'No live chat or instant demo option', description: 'High-intent visitors who have questions have no quick path to answers.', fix: 'Add an Intercom widget or a pre-booked Calendly link for instant demo booking.' },
+  ],
+  copy: {
+    headline: { original: 'The CRM built for growing teams', improved: 'Close 30% more deals — without adding headcount' },
+    subheadline: { original: 'NexusCRM gives your sales team the tools they need to close more deals.', improved: '2,000+ sales teams use NexusCRM to see every deal, automate follow-ups, and hit quota — without living in spreadsheets.' },
+    cta: { original: 'Get started', improved: 'Try free for 14 days — set up in 2 min' },
+    benefits: { original: 'Pipeline management · Email tracking · Team collaboration', improved: 'See every deal in real-time · Never miss a follow-up · Onboard in under 10 minutes' },
+  },
+  recommendations: [
+    { icon: 'zap', title: 'Add a live on-demand demo', description: "Replace 'Request demo' with 'Watch 3-min demo' — a pre-recorded video reduces friction and captures 4× more leads.", impact: 'high' },
+    { icon: 'shield', title: 'Add trust badges above the fold', description: 'G2, Capterra, or SOC 2 badges directly under the hero CTA reduce purchase anxiety by ~18%.', impact: 'high' },
+    { icon: 'trending', title: 'Test a free reverse trial', description: 'Give full pro access for 14 days, then downgrade. Reverse trials convert 3× better than traditional free plans.', impact: 'high' },
+    { icon: 'users', title: 'Personalise hero by traffic source', description: 'Show different headlines based on UTM source — startup vs enterprise messaging improves CVR 20–35%.', impact: 'medium' },
+    { icon: 'target', title: 'Add an ROI calculator', description: "An interactive 'How much could you earn?' calculator increases time on page and purchase intent signals.", impact: 'medium' },
+    { icon: 'star', title: 'Case study strip in hero', description: 'A rotating strip of 3-sentence customer wins directly under the headline builds proof at peak attention.', impact: 'medium' },
+  ],
+  layout: [
+    { title: 'Sticky nav with CTA', description: 'Keep nav visible on scroll with a primary CTA button that stays in view. Pin CTA at bottom of mobile hamburger menu.' },
+    { title: 'Outcome-led hero with social proof', description: 'Hero = headline → 2-line sub-copy → CTA button → logo strip → product screenshot cropped at fold.' },
+    { title: '3-step "how it works" section', description: 'Immediately after hero: Setup → Pipeline → Close. Reduces "how does this work?" objections before pricing.' },
+    { title: 'Social proof hub', description: 'Video testimonial + 3 text testimonials with metrics + a strip of logos + review platform star rating.' },
+    { title: 'Pricing with annual toggle + guarantees', description: '3 tiers with middle tier highlighted, annual toggle pre-selected, money-back guarantee badge under CTAs.' },
+  ],
+}
+
 function loadSavedCopies(): SavedCopy[] {
   try {
     const r = localStorage.getItem('ciq_copies_v1')
@@ -129,6 +220,48 @@ const ICON_CL: Record<string, string> = {
   target: 'var(--red)', eye: 'var(--green)', lock: 'var(--green)', trending: 'var(--blue)',
 }
 
+// ── Word-level diff component ─────────────────────────────────────────────
+function WordDiff({ text, reference, side }: { text: string; reference: string; side: 'original' | 'improved' }) {
+  const clean = (s: string) => s.toLowerCase().replace(/[.,!?;:'"-]/g, '')
+  const refSet = new Set(reference.split(/\s+/).map(clean).filter(Boolean))
+  const words = text.split(/\s+/).filter(Boolean)
+  return (
+    <span>
+      {words.map((w, i) => {
+        const isNew = !refSet.has(clean(w))
+        if (side === 'improved' && isNew) {
+          return <span key={i} className={styles.diffAdded}>{w} </span>
+        }
+        if (side === 'original' && isNew) {
+          return <span key={i} className={styles.diffRemoved}>{w} </span>
+        }
+        return <span key={i}>{w} </span>
+      })}
+    </span>
+  )
+}
+
+// ── Score sparkline ───────────────────────────────────────────────────────
+function ScoreSpark({ scores }: { scores: number[] }) {
+  if (scores.length < 2) return null
+  const W = 44, H = 18, pad = 2
+  const min = Math.min(...scores), max = Math.max(...scores)
+  const range = max - min || 1
+  const pts = scores.map((s, i) => {
+    const x = pad + (i / (scores.length - 1)) * (W - pad * 2)
+    const y = H - pad - ((s - min) / range) * (H - pad * 2)
+    return `${x},${y}`
+  }).join(' ')
+  const last = scores[scores.length - 1]
+  const prev = scores[scores.length - 2]
+  const color = last >= prev ? 'var(--green)' : 'var(--red)'
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ flexShrink: 0 }}>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 function SevBadge({ sev }: { sev: string }) {
   const cls = sev === 'high' ? styles.sevHigh : sev === 'medium' ? styles.sevMed : styles.sevLow
   return <span className={`${styles.sev} ${cls}`}>{sev === 'high' ? 'High' : sev === 'medium' ? 'Medium' : 'Low'}</span>
@@ -199,11 +332,15 @@ function SectionCard({ section, defaultOpen }: { section: PageSection; defaultOp
               <div className={styles.copyPairGrid}>
                 <div className={styles.copyCol}>
                   <div className={`${styles.copyTag} ${styles.ctBefore}`}>Original</div>
-                  <div className={styles.copyVal}>{section.copy_rewrite.original}</div>
+                  <div className={styles.copyVal}>
+                    <WordDiff text={section.copy_rewrite.original} reference={section.copy_rewrite.improved} side="original" />
+                  </div>
                 </div>
                 <div className={styles.copyCol}>
                   <div className={`${styles.copyTag} ${styles.ctAfter}`}>AI rewritten</div>
-                  <div className={`${styles.copyVal} ${styles.copyImp}`}>{section.copy_rewrite.improved}</div>
+                  <div className={`${styles.copyVal} ${styles.copyImp}`}>
+                    <WordDiff text={section.copy_rewrite.improved} reference={section.copy_rewrite.original} side="improved" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -242,6 +379,18 @@ export default function Page() {
   const [customOutput, setCustomOutput] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
+  // Competitor compare
+  const [compareMode, setCompareMode] = useState(false)
+  const [compareUrl, setCompareUrl] = useState('')
+  const [compareResult, setCompareResult] = useState<AuditResult | null>(null)
+  const [compareDisplayUrl, setCompareDisplayUrl] = useState('')
+  const [compareRunning, setCompareRunning] = useState(false)
+
+  // Email gate
+  const [showEmailGate, setShowEmailGate] = useState(false)
+  const [emailInput, setEmailInput] = useState('')
+  const [pendingResult, setPendingResult] = useState<{ result: AuditResult; disp: string; screenshot: string } | null>(null)
+
   // Generate Full Copy state
   const [genLoading, setGenLoading] = useState(false)
   const [genError, setGenError] = useState('')
@@ -269,12 +418,43 @@ export default function Page() {
     tick()
   }, [])
 
+  const finalizeAudit = (auditResult: AuditResult, disp: string, screenshot: string) => {
+    const hasEmail = (() => { try { return !!localStorage.getItem('ciq_email') } catch { return true } })()
+    const auditCount = (() => { try { return parseInt(localStorage.getItem('ciq_audit_count') ?? '0') } catch { return 0 } })()
+    try { localStorage.setItem('ciq_audit_count', String(auditCount + 1)) } catch {}
+
+    if (!hasEmail && auditCount >= 1) {
+      setPendingResult({ result: auditResult, disp, screenshot })
+      setShowEmailGate(true)
+    } else {
+      applyAuditResult(auditResult, disp, screenshot)
+    }
+  }
+
+  const applyAuditResult = (auditResult: AuditResult, disp: string, screenshot: string) => {
+    setResult(auditResult)
+    setDisplayUrl(disp)
+    setAuditTime('Audited ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+    setScreenshotUrl(screenshot)
+    setTimeout(() => { setScreen('results'); setTab('sections') }, 300)
+  }
+
   const runAudit = async () => {
     const raw = urlVal.trim()
     if (!raw) { setError('Please enter a website URL.'); return }
     let normalized = raw
     if (!/^https?:\/\//i.test(normalized)) normalized = 'https://' + normalized
     try { new URL(normalized) } catch { setError('Please enter a valid URL — e.g. apple.com'); return }
+
+    if (compareMode) {
+      const rawC = compareUrl.trim()
+      if (!rawC) { setError('Please enter a competitor URL.'); return }
+      let normalizedC = rawC
+      if (!/^https?:\/\//i.test(normalizedC)) normalizedC = 'https://' + normalizedC
+      try { new URL(normalizedC) } catch { setError('Please enter a valid competitor URL.'); return }
+      await runCompare(normalized, normalizedC)
+      return
+    }
 
     setError('')
     const disp = normalized.replace(/^https?:\/\//, '').replace(/\/$/, '')
@@ -283,11 +463,13 @@ export default function Page() {
     setProgress(0)
     setActiveStep(-1)
     setStepsDone([false, false, false, false])
+    setCompareResult(null)
 
     let progDone = false
     let apiDone = false
     let apiResult: AuditResult | null = null
     let apiError = ''
+    let fetchedScreenshot = ''
 
     const tryFinalize = () => {
       if (!progDone || !apiDone) return
@@ -301,22 +483,17 @@ export default function Page() {
       const overall = Math.round((s.conversion + s.ux + s.cta + s.trust + s.mobile) / 5)
       saveAudit({ url: normalized, display: disp, data: apiResult, overall, auditTime: new Date().toISOString(), ts: Date.now() })
       setSavedAudits(loadAudits())
-      setResult(apiResult)
-      setAuditTime('Audited ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
-      setTimeout(() => { setScreen('results'); setTab('sections') }, 300)
+      finalizeAudit(apiResult, disp, fetchedScreenshot)
     }
 
     animateSteps(() => { setProgress(92); progDone = true; tryFinalize() })
 
     try {
-      // Fetch page content + screenshot URL
       let pageContent = `Website: ${normalized}`
-      let fetchedScreenshotUrl = ''
 
       try {
         const controller = new AbortController()
         const fetchTimeout = setTimeout(() => controller.abort(), 20000)
-
         const fetchRes = await fetch('/api/fetch-page', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -324,50 +501,101 @@ export default function Page() {
           signal: controller.signal,
         })
         clearTimeout(fetchTimeout)
-
         if (fetchRes.ok) {
-          const fetchText = await fetchRes.text()
-          try {
-            const fd = JSON.parse(fetchText) as { content?: string; method?: string; screenshotUrl?: string }
-            if (fd.content && fd.content.length > 200 && !fd.content.startsWith('Website:')) {
-              pageContent = fd.content
-              setFetchWarning(false)
-            } else {
-              setFetchWarning(true)
-            }
-            if (fd.screenshotUrl) fetchedScreenshotUrl = fd.screenshotUrl
-          } catch { setFetchWarning(true) }
+          const fd = JSON.parse(await fetchRes.text()) as { content?: string; screenshotUrl?: string }
+          if (fd.content && fd.content.length > 200 && !fd.content.startsWith('Website:')) {
+            pageContent = fd.content
+            setFetchWarning(false)
+          } else {
+            setFetchWarning(true)
+          }
+          if (fd.screenshotUrl) fetchedScreenshot = fd.screenshotUrl
         }
-      } catch { /* fetch timed out — use URL only */ }
+      } catch { setFetchWarning(true) }
 
-      // Run the audit
       const auditRes = await fetch('/api/audit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: normalized, pageContent, fetchMethod: 'live', screenshotUrl: fetchedScreenshotUrl }),
+        body: JSON.stringify({ url: normalized, pageContent, fetchMethod: 'live', screenshotUrl: fetchedScreenshot }),
       })
-
-      const auditText = await auditRes.text()
-
-      let ad: { result?: AuditResult; error?: string; screenshotUrl?: string }
-      try {
-        ad = JSON.parse(auditText) as { result?: AuditResult; error?: string; screenshotUrl?: string }
-      } catch {
-        throw new Error('Server timed out. Please try again.')
-      }
-
+      const ad = JSON.parse(await auditRes.text()) as { result?: AuditResult; error?: string; screenshotUrl?: string }
       if (ad.error) throw new Error(ad.error)
       if (!ad.result) throw new Error('No result returned. Please try again.')
       apiResult = ad.result
-      if (ad.screenshotUrl) fetchedScreenshotUrl = ad.screenshotUrl
-      setScreenshotUrl(fetchedScreenshotUrl)
-
+      if (ad.screenshotUrl) fetchedScreenshot = ad.screenshotUrl
     } catch (e: unknown) {
       apiError = e instanceof Error ? e.message : 'Something went wrong. Please try again.'
     }
 
     apiDone = true
     tryFinalize()
+  }
+
+  const runCompare = async (urlA: string, urlB: string) => {
+    setError('')
+    const dispA = urlA.replace(/^https?:\/\//, '').replace(/\/$/, '')
+    const dispB = urlB.replace(/^https?:\/\//, '').replace(/\/$/, '')
+    setDisplayUrl(dispA)
+    setCompareDisplayUrl(dispB)
+    setScreen('analyzing')
+    setProgress(0)
+    setActiveStep(-1)
+    setStepsDone([false, false, false, false])
+    setCompareRunning(true)
+
+    let progDone = false
+    let apiDone = false
+
+    const tryFinalize = (resA: AuditResult | null, resB: AuditResult | null, errMsg: string) => {
+      if (!progDone || !apiDone) return
+      setProgress(100)
+      if (errMsg || !resA || !resB) {
+        setScreen('home')
+        setError(errMsg || 'Comparison failed. Please try again.')
+        return
+      }
+      const overallA = Math.round((resA.scores.conversion + resA.scores.ux + resA.scores.cta + resA.scores.trust + resA.scores.mobile) / 5)
+      saveAudit({ url: urlA, display: dispA, data: resA, overall: overallA, auditTime: new Date().toISOString(), ts: Date.now() })
+      setSavedAudits(loadAudits())
+      setResult(resA)
+      setCompareResult(resB)
+      setAuditTime('Compared ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+      setScreenshotUrl('')
+      setCompareRunning(false)
+      setTimeout(() => { setScreen('results'); setTab('compare') }, 300)
+    }
+
+    animateSteps(() => { setProgress(92); progDone = true; tryFinalize(null, null, '') })
+
+    let resA: AuditResult | null = null
+    let resB: AuditResult | null = null
+    let errMsg = ''
+
+    try {
+      const fetchSite = async (url: string) => {
+        let pageContent = `Website: ${url}`
+        try {
+          const r = await fetch('/api/fetch-page', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) })
+          if (r.ok) { const fd = JSON.parse(await r.text()) as { content?: string }; if (fd.content && fd.content.length > 200 && !fd.content.startsWith('Website:')) pageContent = fd.content }
+        } catch {}
+        const ar = await fetch('/api/audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url, pageContent, fetchMethod: 'live' }) })
+        const ad = JSON.parse(await ar.text()) as { result?: AuditResult; error?: string }
+        if (ad.error) throw new Error(ad.error)
+        if (!ad.result) throw new Error('No result')
+        return ad.result
+      }
+
+      const [settledA, settledB] = await Promise.allSettled([fetchSite(urlA), fetchSite(urlB)])
+      if (settledA.status === 'fulfilled') resA = settledA.value
+      else errMsg = 'Could not audit your site: ' + settledA.reason
+      if (settledB.status === 'fulfilled') resB = settledB.value
+      else errMsg = errMsg || 'Could not audit competitor: ' + settledB.reason
+    } catch (e: unknown) {
+      errMsg = e instanceof Error ? e.message : 'Something went wrong.'
+    }
+
+    apiDone = true
+    tryFinalize(resA, resB, errMsg)
   }
 
   const doCopy = (text: string, id: string) => {
@@ -385,24 +613,10 @@ export default function Page() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: displayUrl, pageContent: 'CUSTOM_REWRITE:\n' + customInput, fetchMethod: 'custom' }),
       })
-      const text = await res.text()
-      try {
-        const d = JSON.parse(text) as { result?: AuditResult }
-        const raw = d.result?.copy?.headline?.improved || ''
-        const cleaned = raw
-          .replace(/^```json\s*/i, '')
-          .replace(/^```\s*/i, '')
-          .replace(/```\s*$/i, '')
-          .replace(/^\{[\s\S]*?"rewritten"\s*:\s*"/, '')
-          .replace(/"[\s\S]*\}[\s\S]*$/, '')
-          .trim()
-        setCustomOutput(cleaned || 'Could not rewrite. Try again.')
-      } catch {
-        setCustomOutput('Server timed out. Try again.')
-      }
-    } catch {
-      setCustomOutput('Something went wrong. Try again.')
-    }
+      const d = JSON.parse(await res.text()) as { result?: AuditResult }
+      const raw = d.result?.copy?.headline?.improved || ''
+      setCustomOutput(raw.replace(/^```[\s\S]*?```$/g, '').replace(/^\{[\s\S]*?"rewritten"\s*:\s*"/, '').replace(/"[\s\S]*\}[\s\S]*$/, '').trim() || 'Could not rewrite. Try again.')
+    } catch { setCustomOutput('Something went wrong. Try again.') }
   }
 
   const doGenerateCopy = async () => {
@@ -411,13 +625,8 @@ export default function Page() {
     setGenResult(null)
     setGenError('')
     try {
-      const res = await fetch('/api/generate-copy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...genForm, pageType: activePage }),
-      })
-      const text = await res.text()
-      const d = JSON.parse(text) as { result?: GeneratedCopy; error?: string }
+      const res = await fetch('/api/generate-copy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...genForm, pageType: activePage }) })
+      const d = JSON.parse(await res.text()) as { result?: GeneratedCopy; error?: string }
       if (d.error) throw new Error(d.error)
       if (d.result) setGenResult(d.result)
       else throw new Error('No result returned. Please try again.')
@@ -442,6 +651,7 @@ export default function Page() {
 
   const loadSaved = (entry: SavedAudit) => {
     setResult(entry.data)
+    setCompareResult(null)
     setDisplayUrl(entry.display)
     setAuditTime('Saved ' + new Date(entry.auditTime).toLocaleDateString([], { month: 'short', day: 'numeric' }))
     setScreen('results')
@@ -449,7 +659,52 @@ export default function Page() {
     setShowHistory(false)
   }
 
+  const loadExample = () => {
+    setResult(EXAMPLE_AUDIT)
+    setCompareResult(null)
+    setDisplayUrl('nexuscrm.io')
+    setAuditTime('Example audit')
+    setScreenshotUrl('')
+    setFetchWarning(false)
+    setScreen('results')
+    setTab('sections')
+  }
+
+  const handleEmailSubmit = () => {
+    const em = emailInput.trim()
+    if (!em.includes('@')) return
+    try { localStorage.setItem('ciq_email', em) } catch {}
+    setShowEmailGate(false)
+    if (pendingResult) {
+      applyAuditResult(pendingResult.result, pendingResult.disp, pendingResult.screenshot)
+      setPendingResult(null)
+    }
+  }
+
+  const handleEmailSkip = () => {
+    setShowEmailGate(false)
+    if (pendingResult) {
+      applyAuditResult(pendingResult.result, pendingResult.disp, pendingResult.screenshot)
+      setPendingResult(null)
+    }
+  }
+
   const sectionCopyItems = result?.sections?.filter(s => s.copy_rewrite?.original) ?? []
+
+  // Compute score history per domain for sparklines
+  const domainHistory = savedAudits.reduce<Record<string, number[]>>((acc, a) => {
+    acc[a.display] = acc[a.display] ?? []
+    acc[a.display].push(a.overall)
+    return acc
+  }, {})
+
+  // Compare tab data
+  const compareScoreWins = compareResult ? SCORE_KEYS.map(([k]) => {
+    const myScore = result?.scores[k] ?? 0
+    const theirScore = compareResult.scores[k]
+    return myScore >= theirScore ? 'mine' : 'theirs'
+  }) : []
+  const myWins = compareScoreWins.filter(w => w === 'mine').length
 
   return (
     <div>
@@ -473,6 +728,7 @@ export default function Page() {
         </div>
       </nav>
 
+      {/* ── HOME ── */}
       {screen === 'home' && (
         <div className={styles.homeWrap}>
           <div className={styles.homeInner}>
@@ -489,6 +745,7 @@ export default function Page() {
                 <span key={l} className={styles.critBadge}>{l}</span>
               ))}
             </div>
+
             <div className={styles.inputShell}>
               <input
                 className={styles.urlInput}
@@ -497,18 +754,51 @@ export default function Page() {
                 value={urlVal}
                 onChange={e => setUrlVal(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') runAudit() }}
-                autoComplete="off"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
+                autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false}
               />
               <button className={styles.btnPrimary} onClick={runAudit}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
-                Analyze
+                {compareMode ? 'Compare sites' : 'Analyze'}
               </button>
             </div>
+
+            {/* Compare mode toggle + competitor input */}
+            <div className={styles.compareToggleRow}>
+              <button
+                className={`${styles.compareToggleBtn} ${compareMode ? styles.compareToggleOn : ''}`}
+                onClick={() => { setCompareMode(m => !m); setCompareUrl('') }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 20V10M12 20V4M6 20v-6" />
+                </svg>
+                {compareMode ? 'Cancel comparison' : 'vs Competitor'}
+              </button>
+              {!compareMode && (
+                <button className={styles.exampleBtn} onClick={loadExample}>
+                  Try with an example →
+                </button>
+              )}
+            </div>
+
+            {compareMode && (
+              <div className={styles.compareInputWrap}>
+                <div className={styles.compareInputLabel}>Competitor URL</div>
+                <div className={styles.inputShell} style={{ marginBottom: 0 }}>
+                  <input
+                    className={styles.urlInput}
+                    type="text"
+                    placeholder="competitor.com"
+                    value={compareUrl}
+                    onChange={e => setCompareUrl(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') runAudit() }}
+                    autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false}
+                  />
+                </div>
+              </div>
+            )}
+
             {error && <div className={styles.errPill}>{error}</div>}
             <p className={styles.homeNote}>Reads every section · Quotes real copy · Saved 15 days · Free</p>
             <div className={styles.prevRow}>
@@ -530,12 +820,13 @@ export default function Page() {
         </div>
       )}
 
+      {/* ── ANALYZING ── */}
       {screen === 'analyzing' && (
         <div className={styles.analyzingWrap}>
           <div className={styles.anShell}>
             <div className={styles.anRing} />
-            <div className={styles.anTitle}>Reading your website</div>
-            <div className={styles.anUrl}>{displayUrl}</div>
+            <div className={styles.anTitle}>{compareRunning ? 'Comparing both sites' : 'Reading your website'}</div>
+            <div className={styles.anUrl}>{compareRunning ? `${displayUrl} vs ${compareDisplayUrl}` : displayUrl}</div>
             <div className={styles.anBarWrap}><div className={styles.anBar} style={{ width: progress + '%' }} /></div>
             <div className={styles.anSteps}>
               {STEPS.map((label, i) => (
@@ -549,14 +840,16 @@ export default function Page() {
         </div>
       )}
 
+      {/* ── RESULTS ── */}
       {screen === 'results' && result && (
         <div className={styles.results}>
           <div className={styles.resTop}>
             <div className={styles.resTopInner}>
               <div>
-                <div className={styles.resHeading}>Audit Report</div>
+                <div className={styles.resHeading}>{compareResult ? 'Comparison Report' : 'Audit Report'}</div>
                 <div className={styles.resMeta}>
                   <div className={styles.urlPill}><div className={styles.pillDot} />{displayUrl}</div>
+                  {compareResult && <><span className={styles.vsLabel}>vs</span><div className={styles.urlPill}><div className={styles.pillDot} style={{ background: 'var(--blue)' }} />{compareDisplayUrl}</div></>}
                   <span className={styles.resTime}>{auditTime}</span>
                 </div>
               </div>
@@ -573,8 +866,15 @@ export default function Page() {
                   </svg>
                   Saved
                 </button>
+                <button className={styles.btnSecondary} onClick={() => window.print()}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
+                  </svg>
+                  Export PDF
+                </button>
               </div>
             </div>
+
             {screenshotUrl && (
               <div className={styles.screenshotWrap}>
                 <div className={styles.screenshotInner}>
@@ -583,16 +883,8 @@ export default function Page() {
                     Live screenshot
                   </div>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={screenshotUrl}
-                    alt={`Screenshot of ${displayUrl}`}
-                    className={styles.screenshotImg}
-                    loading="lazy"
-                    onError={(e) => {
-                      const el = e.target as HTMLImageElement
-                      el.parentElement!.style.display = 'none'
-                    }}
-                  />
+                  <img src={screenshotUrl} alt={`Screenshot of ${displayUrl}`} className={styles.screenshotImg} loading="lazy"
+                    onError={e => { (e.target as HTMLImageElement).parentElement!.style.display = 'none' }} />
                 </div>
               </div>
             )}
@@ -604,11 +896,17 @@ export default function Page() {
                 {SCORE_KEYS.map(([k, l], i) => {
                   const v = Math.round(result.scores[k] as number)
                   const c = scoreColor(v)
+                  const cv = compareResult ? Math.round(compareResult.scores[k] as number) : null
                   return (
                     <div key={k} className={styles.sc} style={{ animationDelay: `${i * 0.05}s` }}>
                       <div className={styles.scLbl}>{l}</div>
                       <div className={styles.scNum} style={{ color: c }}>{v}<span className={styles.scDenom}>/100</span></div>
-                      <div className={styles.scNote}>{result.score_notes[k] ?? ''}</div>
+                      {cv !== null && (
+                        <div className={styles.scCompare} style={{ color: v >= cv ? 'var(--green)' : 'var(--red)' }}>
+                          {v >= cv ? '▲' : '▼'} vs {cv}
+                        </div>
+                      )}
+                      {!cv && <div className={styles.scNote}>{result.score_notes[k] ?? ''}</div>}
                       <div className={styles.scBar}><div className={styles.scFill} style={{ width: v + '%', background: c }} /></div>
                     </div>
                   )
@@ -618,19 +916,21 @@ export default function Page() {
           </div>
 
           {fetchWarning && (
-            <div style={{ background: 'var(--amber-bg)', borderBottom: '1px solid var(--border)', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text2)' }}>
+            <div className={styles.fetchWarnBanner}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               <span>Could not read the live page — audit is based on domain knowledge. For a deeper audit, add a <strong>JINA_API_KEY</strong> in Vercel settings.</span>
             </div>
           )}
+
           <div className={styles.tabRow}>
             <div className={styles.tabRowInner}>
               {([
+                compareResult ? ['compare', 'Compare', null] : null,
                 ['sections', 'Sections', result.sections?.length],
                 ['copy', 'Copy Rewriter', sectionCopyItems.length || null],
                 ['recs', 'Recommendations', null],
                 ['layout', 'Layout Blueprint', null],
-              ] as [string, string, number | null][]).map(([id, label, count]) => (
+              ].filter(Boolean) as [string, string, number | null][]).map(([id, label, count]) => (
                 <button key={id} className={`${styles.tabBtn} ${tab === id ? styles.tabOn : ''}`} onClick={() => setTab(id)}>
                   {label}{count != null && <span className={styles.tabBadge}>{count}</span>}
                 </button>
@@ -638,6 +938,80 @@ export default function Page() {
             </div>
           </div>
 
+          {/* ── COMPARE TAB ── */}
+          {tab === 'compare' && compareResult && (
+            <div className={styles.panel}>
+              <div className={`${styles.compareBanner} ${myWins >= 3 ? styles.compareBannerWin : styles.compareBannerLose}`}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  {myWins >= 3
+                    ? <><path d="M8 21l4-4 4 4M12 17V3"/><path d="M3 10l4-4 4 4"/></>
+                    : <><path d="M12 3v14"/><path d="M17 13l-5 5-5-5"/></>}
+                </svg>
+                <strong>Your site wins {myWins}/5 categories</strong>
+                {myWins >= 3 ? ' — you have the stronger CRO foundation.' : ' — your competitor has the edge. See the breakdown below.'}
+              </div>
+
+              <div className={styles.compareGrid}>
+                <div className={styles.compareCol}>
+                  <div className={styles.compareColHead}>
+                    <div className={styles.pillDot} />
+                    <span>{displayUrl}</span>
+                    <span className={styles.compareOverallScore} style={{ color: scoreColor(Math.round((result.scores.conversion + result.scores.ux + result.scores.cta + result.scores.trust + result.scores.mobile) / 5)) }}>
+                      {Math.round((result.scores.conversion + result.scores.ux + result.scores.cta + result.scores.trust + result.scores.mobile) / 5)}
+                    </span>
+                  </div>
+                  {SCORE_KEYS.map(([k, l], i) => {
+                    const v = Math.round(result.scores[k] as number)
+                    const cv = Math.round(compareResult.scores[k] as number)
+                    const win = v >= cv
+                    return (
+                      <div key={k} className={`${styles.compareRow} ${win ? styles.compareRowWin : styles.compareRowLose}`}>
+                        <span className={styles.compareRowLabel}>{l}</span>
+                        <span className={styles.compareRowScore} style={{ color: win ? 'var(--green)' : 'var(--red)' }}>{v}</span>
+                        <div className={styles.compareBar}><div className={styles.compareBarFill} style={{ width: v + '%', background: win ? 'var(--green)' : 'var(--red)' }} /></div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                <div className={styles.compareCol}>
+                  <div className={styles.compareColHead}>
+                    <div className={styles.pillDot} style={{ background: 'var(--blue)' }} />
+                    <span>{compareDisplayUrl}</span>
+                    <span className={styles.compareOverallScore} style={{ color: scoreColor(Math.round((compareResult.scores.conversion + compareResult.scores.ux + compareResult.scores.cta + compareResult.scores.trust + compareResult.scores.mobile) / 5)) }}>
+                      {Math.round((compareResult.scores.conversion + compareResult.scores.ux + compareResult.scores.cta + compareResult.scores.trust + compareResult.scores.mobile) / 5)}
+                    </span>
+                  </div>
+                  {SCORE_KEYS.map(([k, l], i) => {
+                    const v = Math.round(compareResult.scores[k] as number)
+                    const av = Math.round(result.scores[k] as number)
+                    const win = v >= av
+                    return (
+                      <div key={k} className={`${styles.compareRow} ${win ? styles.compareRowWin : styles.compareRowLose}`}>
+                        <span className={styles.compareRowLabel}>{l}</span>
+                        <span className={styles.compareRowScore} style={{ color: win ? 'var(--green)' : 'var(--red)' }}>{v}</span>
+                        <div className={styles.compareBar}><div className={styles.compareBarFill} style={{ width: v + '%', background: win ? 'var(--green)' : 'var(--red)' }} /></div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className={styles.infoBanner}>
+                <div className={styles.infoIcon}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                </div>
+                <div>
+                  <div className={styles.infoTitle}>View section-by-section details</div>
+                  <div className={styles.infoBody}>Switch to the Sections tab to see the full audit for your site. The competitor audit is run with the same methodology.</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── SECTIONS TAB ── */}
           {tab === 'sections' && (
             <div className={styles.panel}>
               <div className={styles.infoBanner}>
@@ -661,6 +1035,7 @@ export default function Page() {
             </div>
           )}
 
+          {/* ── COPY TAB ── */}
           {tab === 'copy' && (
             <div className={styles.panel}>
               {sectionCopyItems.length > 0 ? (
@@ -673,7 +1048,7 @@ export default function Page() {
                     </div>
                     <div>
                       <div className={styles.infoTitle}>Section copy rewrites</div>
-                      <div className={styles.infoBody}>Each rewrite is pulled from a section that needs improvement — original copy from your site alongside an AI-powered conversion-focused alternative.</div>
+                      <div className={styles.infoBody}>Each rewrite is pulled from a section that needs improvement. Highlighted words show exactly what changed — <span className={styles.diffAddedInline}>green = added</span>, <span className={styles.diffRemovedInline}>strikethrough = removed</span>.</div>
                     </div>
                   </div>
                   {sectionCopyItems.map((sec, i) => {
@@ -688,11 +1063,15 @@ export default function Page() {
                         <div className={styles.copySides}>
                           <div className={styles.copyCol}>
                             <div className={`${styles.copyTag} ${styles.ctBefore}`}>From your site</div>
-                            <div className={styles.copyVal}>{cr.original}</div>
+                            <div className={styles.copyVal}>
+                              <WordDiff text={cr.original} reference={cr.improved} side="original" />
+                            </div>
                           </div>
                           <div className={styles.copyCol}>
                             <div className={`${styles.copyTag} ${styles.ctAfter}`}>AI rewritten</div>
-                            <div className={`${styles.copyVal} ${styles.copyImp}`}>{cr.improved}</div>
+                            <div className={`${styles.copyVal} ${styles.copyImp}`}>
+                              <WordDiff text={cr.improved} reference={cr.original} side="improved" />
+                            </div>
                           </div>
                         </div>
                         <div className={styles.copyFoot}>
@@ -737,6 +1116,7 @@ export default function Page() {
             </div>
           )}
 
+          {/* ── RECS TAB ── */}
           {tab === 'recs' && (
             <div className={styles.panel}>
               <div className={styles.recsGrid}>
@@ -761,6 +1141,7 @@ export default function Page() {
             </div>
           )}
 
+          {/* ── LAYOUT TAB ── */}
           {tab === 'layout' && (
             <div className={styles.panel}>
               <div className={styles.layList}>
@@ -776,8 +1157,6 @@ export default function Page() {
               </div>
             </div>
           )}
-
-          {/* GENERATE COPY tab removed — now a standalone screen via nav */}
         </div>
       )}
 
@@ -785,8 +1164,6 @@ export default function Page() {
       {screen === 'generate' && (
         <div className={styles.generateScreen}>
           <div className={styles.generateInner}>
-
-            {/* Header */}
             <div className={styles.generateHeader}>
               <button className={styles.generateBack} onClick={() => setScreen('home')}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
@@ -802,27 +1179,18 @@ export default function Page() {
 
             {!genResult ? (
               <div className={styles.generateFormWrap}>
-                {/* Form */}
                 <div className={styles.generateForm}>
                   <div className={styles.generateFormTitle}>Project Details</div>
-
-                  {/* Page selector — clean dropdown */}
                   <div className={styles.genField}>
                     <label className={styles.genLabel}>Which page are you writing copy for?</label>
                     <div className={styles.selectWrap}>
-                      <select
-                        className={styles.genInput}
-                        value={activePage}
-                        onChange={e => setActivePage(e.target.value)}
-                        style={{ paddingRight: 44 }}
-                      >
+                      <select className={styles.genInput} value={activePage} onChange={e => setActivePage(e.target.value)} style={{ paddingRight: 44 }}>
                         {['Home', 'About', 'Services', 'Pricing', 'Contact', 'Case Studies', 'Portfolio', 'Blog', 'Landing Page'].map(p => (
                           <option key={p} value={p}>{p}</option>
                         ))}
                       </select>
                     </div>
                   </div>
-
                   <div className={styles.genRow}>
                     <div className={styles.genField}>
                       <label className={styles.genLabel}>Project / Brand Name <span style={{color:'var(--red)'}}>*</span></label>
@@ -833,22 +1201,18 @@ export default function Page() {
                       <input className={styles.genInput} placeholder="e.g. SaaS, Agency, E-commerce" value={genForm.industry} onChange={e => setGenForm(f => ({ ...f, industry: e.target.value }))} />
                     </div>
                   </div>
-
                   <div className={styles.genField}>
                     <label className={styles.genLabel}>Target Audience</label>
                     <input className={styles.genInput} placeholder="e.g. Startup founders with 0-10k MRR looking to reduce churn" value={genForm.targetAudience} onChange={e => setGenForm(f => ({ ...f, targetAudience: e.target.value }))} />
                   </div>
-
                   <div className={styles.genField}>
                     <label className={styles.genLabel}>Main Offer <span style={{color:'var(--red)'}}>*</span></label>
                     <textarea className={styles.genTa} placeholder="What exactly are you selling? What does the customer get and what outcome do they achieve?" value={genForm.mainOffer} onChange={e => setGenForm(f => ({ ...f, mainOffer: e.target.value }))} />
                   </div>
-
                   <div className={styles.genField}>
                     <label className={styles.genLabel}>Key Benefits / Differentiators</label>
                     <textarea className={styles.genTa} placeholder="List 3-5 specific outcomes or benefits&#10;e.g. Automate workflows without coding&#10;Save 15+ hours per week&#10;No technical skills required" value={genForm.keyBenefits} onChange={e => setGenForm(f => ({ ...f, keyBenefits: e.target.value }))} />
                   </div>
-
                   <div className={styles.genRow}>
                     <div className={styles.genField}>
                       <label className={styles.genLabel}>Primary SEO Keyword</label>
@@ -859,7 +1223,6 @@ export default function Page() {
                       <input className={styles.genInput} placeholder="e.g. team productivity, no-code automation" value={genForm.secondaryKeywords} onChange={e => setGenForm(f => ({ ...f, secondaryKeywords: e.target.value }))} />
                     </div>
                   </div>
-
                   <div className={styles.genField}>
                     <label className={styles.genLabel}>Tone of Voice</label>
                     <div className={styles.selectWrap}>
@@ -872,12 +1235,7 @@ export default function Page() {
                       </select>
                     </div>
                   </div>
-
-                  <button
-                    className={styles.generateBtn}
-                    onClick={doGenerateCopy}
-                    disabled={genLoading || !genForm.projectName || !genForm.mainOffer}
-                  >
+                  <button className={styles.generateBtn} onClick={doGenerateCopy} disabled={genLoading || !genForm.projectName || !genForm.mainOffer}>
                     {genLoading ? (
                       <span className={styles.generateBtnLoading}>
                         <span className={styles.generateSpinner} />
@@ -893,7 +1251,6 @@ export default function Page() {
                   {genError && <div className={styles.errPill} style={{ marginTop: 12 }}>{genError}</div>}
                 </div>
 
-                {/* Saved copies sidebar */}
                 <div className={styles.generateSidebar}>
                   <div className={styles.sidebarTitle}>Saved Copies</div>
                   {loadSavedCopies().length === 0 ? (
@@ -933,12 +1290,9 @@ export default function Page() {
               </div>
             ) : (
               <div className={styles.generateResults}>
-                {/* Results header */}
                 <div className={styles.generateResultsHeader}>
                   <div>
-                    <div className={styles.generateResultsTitle}>
-                      {genForm.projectName} — {activePage} Page
-                    </div>
+                    <div className={styles.generateResultsTitle}>{genForm.projectName} — {activePage} Page</div>
                     <div className={styles.generateResultsMeta} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <span>{genResult.sections?.length} sections generated</span>
                       {genResult.siteType && (
@@ -959,7 +1313,7 @@ export default function Page() {
                     )}
                   </div>
                   <div className={styles.generateResultsActions}>
-                    <button className={styles.btnGhost} onClick={() => { setGenResult(null) }}>
+                    <button className={styles.btnGhost} onClick={() => setGenResult(null)}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                       Edit
                     </button>
@@ -973,7 +1327,6 @@ export default function Page() {
                   </div>
                 </div>
 
-                {/* Conversion Score */}
                 <div className={styles.conversionScoreCard}>
                   <div className={styles.conversionScoreLeft}>
                     <div className={styles.conversionScoreLabel}>Predicted Conversion Strength</div>
@@ -1001,7 +1354,6 @@ export default function Page() {
                   </div>
                 </div>
 
-                {/* SEO meta */}
                 <div className={styles.genSection}>
                   <div className={styles.genSectionHead}>
                     <div className={styles.genSectionName}><div className={styles.genSectionNameDot} />SEO Meta Tags</div>
@@ -1015,7 +1367,6 @@ export default function Page() {
                   </div>
                 </div>
 
-                {/* All sections */}
                 {genResult.sections?.map((sec, i) => {
                   const allText = [
                     sec.headline && `Headline:\n${sec.headline}`,
@@ -1095,16 +1446,11 @@ export default function Page() {
                 })}
 
                 <div className={styles.generateResultsFooter}>
-                  {/* Other pages dropdown */}
                   <div>
                     <div className={styles.quickPagesLabel}>Would you like to generate another page?</div>
                     <div className={styles.quickPagesRow}>
                       <div className={styles.quickPagesSelectWrap}>
-                        <select
-                          className={styles.quickPagesSelect}
-                          value={selectedOtherPage}
-                          onChange={e => setSelectedOtherPage(e.target.value)}
-                        >
+                        <select className={styles.quickPagesSelect} value={selectedOtherPage} onChange={e => setSelectedOtherPage(e.target.value)}>
                           <option value="">Select a page…</option>
                           {['Home', 'About', 'Services', 'Pricing', 'Contact', 'Case Studies', 'Portfolio', 'Blog', 'Landing Page']
                             .filter(p => p !== activePage)
@@ -1118,28 +1464,17 @@ export default function Page() {
                         onClick={() => {
                           if (!selectedOtherPage) return
                           const page = selectedOtherPage
-                          setActivePage(page)
-                          setSelectedOtherPage('')
-                          setGenResult(null)
-                          setGenLoading(true)
-                          fetch('/api/generate-copy', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ ...genForm, pageType: page }),
-                          }).then(r => r.text()).then(text => {
-                            try {
-                              const d = JSON.parse(text) as { result?: GeneratedCopy; error?: string }
-                              if (d.error) throw new Error(d.error)
-                              if (d.result) setGenResult(d.result)
-                              else throw new Error('No result returned. Please try again.')
-                            } catch (e: unknown) {
-                              setGenError(e instanceof Error ? e.message : 'Something went wrong. Please try again.')
-                            }
-                            setGenLoading(false)
-                          }).catch((e: unknown) => {
-                            setGenError(e instanceof Error ? e.message : 'Something went wrong. Please try again.')
-                            setGenLoading(false)
-                          })
+                          setActivePage(page); setSelectedOtherPage(''); setGenResult(null); setGenLoading(true)
+                          fetch('/api/generate-copy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...genForm, pageType: page }) })
+                            .then(r => r.text()).then(text => {
+                              try {
+                                const d = JSON.parse(text) as { result?: GeneratedCopy; error?: string }
+                                if (d.error) throw new Error(d.error)
+                                if (d.result) setGenResult(d.result)
+                                else throw new Error('No result returned. Please try again.')
+                              } catch (e: unknown) { setGenError(e instanceof Error ? e.message : 'Something went wrong.') }
+                              setGenLoading(false)
+                            }).catch((e: unknown) => { setGenError(e instanceof Error ? e.message : 'Something went wrong.'); setGenLoading(false) })
                         }}
                       >
                         {genLoading ? <><span className={styles.generateSpinner} />Generating…</> : 'Generate'}
@@ -1147,7 +1482,6 @@ export default function Page() {
                     </div>
                   </div>
                   {genError && <div className={styles.errPill} style={{ marginTop: 12 }}>{genError}</div>}
-                  {/* Action buttons */}
                   <div className={styles.footerActions}>
                     <button className={styles.btnPrimary} style={{ flex: 1, justifyContent: 'center' }} onClick={() => {
                       const score = calcConversionScore(genResult!)
@@ -1157,7 +1491,7 @@ export default function Page() {
                     }}>
                       {copiedId === 'saved-confirm' ? '✓ Saved for 15 days' : 'Save Copy'}
                     </button>
-                    <button className={styles.btnGhost} onClick={() => { setGenResult(null) }}>Edit details</button>
+                    <button className={styles.btnGhost} onClick={() => setGenResult(null)}>Edit details</button>
                   </div>
                 </div>
               </div>
@@ -1166,8 +1500,7 @@ export default function Page() {
         </div>
       )}
 
-
-
+      {/* ── SAVED AUDITS DRAWER ── */}
       {showHistory && (
         <div className={styles.drawerOverlay} onClick={() => setShowHistory(false)}>
           <div className={styles.drawer} onClick={e => e.stopPropagation()}>
@@ -1181,14 +1514,17 @@ export default function Page() {
             </div>
             {savedAudits.length === 0 ? (
               <div className={styles.histEmpty}>
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.3 }}>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.2 }}>
                   <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
                 </svg>
-                <p>No saved audits yet.</p>
+                <p>No saved audits yet</p>
+                <p style={{ fontSize: 12, opacity: .6 }}>Audits you run are saved here for 15 days</p>
+                <button className={styles.btnSecondary} onClick={() => setShowHistory(false)}>Analyze your first site →</button>
               </div>
             ) : savedAudits.map((a, i) => {
               const c = a.overall >= 70 ? 'var(--green)' : a.overall >= 50 ? 'var(--amber)' : 'var(--red)'
               const siteType = detectSiteType(a.display)
+              const history = (domainHistory[a.display] ?? []).slice().reverse()
               return (
                 <div key={i} className={styles.histItem} onClick={() => loadSaved(a)}>
                   <div className={styles.histIco}>
@@ -1210,6 +1546,7 @@ export default function Page() {
                       )}
                     </div>
                   </div>
+                  <ScoreSpark scores={history} />
                   <div className={styles.histScore} style={{ color: c }}>{a.overall}</div>
                   <button className={styles.histDelete} onClick={(e) => deleteAudit(a.url, e)} title="Delete">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1219,6 +1556,34 @@ export default function Page() {
                 </div>
               )
             })}
+          </div>
+        </div>
+      )}
+
+      {/* ── EMAIL GATE MODAL ── */}
+      {showEmailGate && (
+        <div className={styles.emailGateOverlay} onClick={handleEmailSkip}>
+          <div className={styles.emailGateCard} onClick={e => e.stopPropagation()}>
+            <div className={styles.emailGateIcon}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.82 19.79 19.79 0 01.01 1.18 2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14z"/>
+              </svg>
+            </div>
+            <div className={styles.emailGateTitle}>Save your full audit report</div>
+            <div className={styles.emailGateSub}>Enter your email to save results for 15 days and get weekly CRO tips.</div>
+            <input
+              className={styles.emailGateInput}
+              type="email"
+              placeholder="you@company.com"
+              value={emailInput}
+              onChange={e => setEmailInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleEmailSubmit() }}
+              autoFocus
+            />
+            <button className={styles.btnPrimary} style={{ width: '100%', justifyContent: 'center' }} onClick={handleEmailSubmit}>
+              Save my audit →
+            </button>
+            <button className={styles.emailGateSkip} onClick={handleEmailSkip}>Skip for now</button>
           </div>
         </div>
       )}

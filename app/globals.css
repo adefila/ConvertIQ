@@ -66,3 +66,8 @@ body {
 
 ::placeholder { color: var(--text3); }
 input, textarea, select, button { font-family: var(--f); }
+
+@media print {
+  body { background: #fff; color: #000; }
+  @page { margin: 18mm 14mm; }
+}
