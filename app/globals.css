@@ -1,45 +1,50 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&display=swap');
 
 :root {
-  /* SF Pro Display stack — closest web approximation */
-  --f: 'SF Pro Display', 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+  --f: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
 
-  /* Surfaces */
-  --bg:        #F5F5F7;
-  --bg2:       #EBEBED;
-  --bg3:       #E0E0E2;
-  --surface:   #FFFFFF;
+  /* Backgrounds */
+  --bg:      #09090B;
+  --bg2:     #111114;
+  --bg3:     #1C1C21;
+  --surface: #111114;
 
   /* Borders */
-  --border:    rgba(0,0,0,.06);
-  --border2:   rgba(0,0,0,.10);
-  --border3:   rgba(0,0,0,.20);
+  --border:  rgba(255,255,255,.07);
+  --border2: rgba(255,255,255,.13);
+  --border3: rgba(255,255,255,.24);
 
   /* Text */
-  --text:      #1D1D1F;
-  --text2:     #424245;
-  --text3:     #86868B;
+  --text:  #F4F4F6;
+  --text2: #A1A1AA;
+  --text3: #52525B;
 
-  /* Semantic colours (Apple HIG palette) */
-  --green:     #34C759;
-  --green-bg:  rgba(52,199,89,.08);
-  --green-bd:  rgba(52,199,89,.20);
-  --amber:     #FF9F0A;
-  --amber-bg:  rgba(255,159,10,.08);
-  --amber-bd:  rgba(255,159,10,.20);
-  --red:       #FF3B30;
-  --red-bg:    rgba(255,59,48,.08);
-  --red-bd:    rgba(255,59,48,.20);
-  --blue:      #0A84FF;
-  --blue-bg:   rgba(10,132,255,.08);
-  --blue-bd:   rgba(10,132,255,.20);
+  /* Accent — indigo */
+  --accent:    #818CF8;
+  --accent-bg: rgba(129,140,248,.10);
+  --accent-bd: rgba(129,140,248,.28);
 
-  /* Spacing & shape */
-  --r-sm:  8px;
-  --r-md:  12px;
-  --r-lg:  16px;
-  --r-xl:  20px;
-  --r-pill: 980px;
+  /* Semantic */
+  --green:    #34D399;
+  --green-bg: rgba(52,211,153,.10);
+  --green-bd: rgba(52,211,153,.25);
+  --amber:    #FBBF24;
+  --amber-bg: rgba(251,191,36,.10);
+  --amber-bd: rgba(251,191,36,.25);
+  --red:      #FB7185;
+  --red-bg:   rgba(251,113,133,.10);
+  --red-bd:   rgba(251,113,133,.25);
+  --blue:     #60A5FA;
+  --blue-bg:  rgba(96,165,250,.10);
+  --blue-bd:  rgba(96,165,250,.25);
+
+  /* Radius */
+  --r-sm:   6px;
+  --r-md:   10px;
+  --r-lg:   14px;
+  --r-xl:   18px;
+  --r-2xl:  24px;
+  --r-pill: 999px;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -52,14 +57,12 @@ html {
 
 body {
   font-family: var(--f);
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.6;
   background: var(--bg);
   color: var(--text);
-  letter-spacing: -0.011em;
+  letter-spacing: -0.01em;
 }
 
-/* Faint placeholders */
-::placeholder { color: var(--text3); opacity: 0.55; }
-
+::placeholder { color: var(--text3); }
 input, textarea, select, button { font-family: var(--f); }
