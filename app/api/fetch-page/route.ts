@@ -123,7 +123,8 @@ export async function POST(req: NextRequest) {
       } catch { /* fall through */ }
     }
 
-    if (!content || content.length < 200) {
+    const wordCount = content ? content.trim().split(/\s+/).filter(w => w.length > 2).length : 0
+    if (!content || wordCount < 40) {
       return NextResponse.json({
         content: `Website: ${url}\n\nCould not fetch page content — the site may block crawlers or require authentication.\n\nPlease analyze this website based on:\n1. The domain name and URL structure\n2. What type of business this appears to be\n3. Common patterns for this industry\nBe transparent that you are inferring rather than reading live content.`,
         method: 'url-only',
@@ -154,11 +155,11 @@ export async function POST(req: NextRequest) {
 // Deep extraction — every piece of text from HTML
 function extractAll(html: string): string {
   let clean = html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-    .replace(/<svg\b[^<]*(?:(?!<\/svg>)<[^<]*)*<\/svg>/gi, '')
-    .replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, '')
-    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, '')
+    .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, '')
+    .replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, '')
     .replace(/<!--[\s\S]*?-->/g, '')
 
   const title = clean.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.replace(/<[^>]+>/g, '').trim() ?? ''

@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
       pageContent.startsWith('CUSTOM_REWRITE:')
     const copyText = isCustom ? pageContent.replace('CUSTOM_REWRITE:\n', '') : ''
     const hasContent = !isCustom && pageContent && pageContent.length > 300 && !pageContent.startsWith('Website:')
-    const content = hasContent ? pageContent!.slice(0, 8000) : ''
+    const content = hasContent ? pageContent!.slice(0, 12000) : ''
 
     const systemPrompt = `You are a CRO (Conversion Rate Optimization) expert. You ONLY respond with valid JSON objects. Never write any text before or after the JSON. Never apologize. Never explain. Just output the JSON.`
 
