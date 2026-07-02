@@ -41,7 +41,7 @@ Include all sections found, 6 recommendations, 5 layout items, 3 overall issues.
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: isCustom ? 400 : 5000,
         system: systemPrompt,
         stream: true,

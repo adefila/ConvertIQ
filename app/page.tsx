@@ -244,6 +244,8 @@ export default function Page() {
 
   // Generate Full Copy state
   const [genLoading, setGenLoading] = useState(false)
+  const [genError, setGenError] = useState('')
+  const [fetchWarning, setFetchWarning] = useState(false)
   const [genResult, setGenResult] = useState<GeneratedCopy | null>(null)
   const [activePage, setActivePage] = useState('Home')
   const [selectedOtherPage, setSelectedOtherPage] = useState('')
@@ -329,9 +331,12 @@ export default function Page() {
             const fd = JSON.parse(fetchText) as { content?: string; method?: string; screenshotUrl?: string }
             if (fd.content && fd.content.length > 200 && !fd.content.startsWith('Website:')) {
               pageContent = fd.content
+              setFetchWarning(false)
+            } else {
+              setFetchWarning(true)
             }
             if (fd.screenshotUrl) fetchedScreenshotUrl = fd.screenshotUrl
-          } catch { /* use fallback */ }
+          } catch { setFetchWarning(true) }
         }
       } catch { /* fetch timed out — use URL only */ }
 
@@ -404,6 +409,7 @@ export default function Page() {
     if (!genForm.projectName || !genForm.mainOffer) return
     setGenLoading(true)
     setGenResult(null)
+    setGenError('')
     try {
       const res = await fetch('/api/generate-copy', {
         method: 'POST',
@@ -412,8 +418,12 @@ export default function Page() {
       })
       const text = await res.text()
       const d = JSON.parse(text) as { result?: GeneratedCopy; error?: string }
+      if (d.error) throw new Error(d.error)
       if (d.result) setGenResult(d.result)
-    } catch { /* silent */ }
+      else throw new Error('No result returned. Please try again.')
+    } catch (e: unknown) {
+      setGenError(e instanceof Error ? e.message : 'Something went wrong. Please try again.')
+    }
     setGenLoading(false)
   }
 
@@ -607,6 +617,12 @@ export default function Page() {
             </div>
           </div>
 
+          {fetchWarning && (
+            <div style={{ background: 'var(--amber-bg)', borderBottom: '1px solid var(--border)', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text2)' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <span>Could not read the live page — audit is based on domain knowledge. For a deeper audit, add a <strong>JINA_API_KEY</strong> in Vercel settings.</span>
+            </div>
+          )}
           <div className={styles.tabRow}>
             <div className={styles.tabRowInner}>
               {([
@@ -874,6 +890,7 @@ export default function Page() {
                       </>
                     )}
                   </button>
+                  {genError && <div className={styles.errPill} style={{ marginTop: 12 }}>{genError}</div>}
                 </div>
 
                 {/* Saved copies sidebar */}
@@ -1111,17 +1128,25 @@ export default function Page() {
                             body: JSON.stringify({ ...genForm, pageType: page }),
                           }).then(r => r.text()).then(text => {
                             try {
-                              const d = JSON.parse(text) as { result?: GeneratedCopy }
+                              const d = JSON.parse(text) as { result?: GeneratedCopy; error?: string }
+                              if (d.error) throw new Error(d.error)
                               if (d.result) setGenResult(d.result)
-                            } catch { /* silent */ }
+                              else throw new Error('No result returned. Please try again.')
+                            } catch (e: unknown) {
+                              setGenError(e instanceof Error ? e.message : 'Something went wrong. Please try again.')
+                            }
                             setGenLoading(false)
-                          }).catch(() => setGenLoading(false))
+                          }).catch((e: unknown) => {
+                            setGenError(e instanceof Error ? e.message : 'Something went wrong. Please try again.')
+                            setGenLoading(false)
+                          })
                         }}
                       >
                         {genLoading ? <><span className={styles.generateSpinner} />Generating…</> : 'Generate'}
                       </button>
                     </div>
                   </div>
+                  {genError && <div className={styles.errPill} style={{ marginTop: 12 }}>{genError}</div>}
                   {/* Action buttons */}
                   <div className={styles.footerActions}>
                     <button className={styles.btnPrimary} style={{ flex: 1, justifyContent: 'center' }} onClick={() => {

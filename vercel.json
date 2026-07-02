@@ -5,6 +5,9 @@
     },
     "app/api/fetch-page/route.ts": {
       "maxDuration": 30
+    },
+    "app/api/generate-copy/route.ts": {
+      "maxDuration": 60
     }
   }
 }
