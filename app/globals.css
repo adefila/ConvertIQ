@@ -1,7 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..700;1,14..32,300..700&display=swap');
 
 :root {
-  --f: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --f: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 
   /* Backgrounds */
   --bg:      #F5F5F8;
@@ -57,11 +57,11 @@ html {
 
 body {
   font-family: var(--f);
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: 16px;
+  line-height: 1.65;
   background: var(--bg);
   color: var(--text);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.011em;
 }
 
 ::placeholder { color: var(--text3); }
