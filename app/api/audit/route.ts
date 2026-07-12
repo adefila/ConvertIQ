@@ -42,7 +42,7 @@ Include all sections found, 6 recommendations, 5 layout items, 3 overall issues.
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: isCustom ? 400 : 5000,
+        max_tokens: isCustom ? 400 : 8000,
         system: systemPrompt,
         stream: true,
         messages: [{ role: 'user', content: userPrompt }],
@@ -100,26 +100,60 @@ Include all sections found, 6 recommendations, 5 layout items, 3 overall issues.
       })
     }
 
-    // Strip any text before the first { and after the last }
+    // Strip markdown fences and isolate the JSON object
     let clean = fullText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim()
     const s = clean.indexOf('{')
-    const e = clean.lastIndexOf('}')
-    if (s !== -1 && e !== -1) {
-      clean = clean.slice(s, e + 1)
-    } else {
+    if (s === -1) {
       return NextResponse.json({ error: 'No JSON found in response. Please try again.' }, { status: 500 })
     }
+    clean = clean.slice(s)
+    const e = clean.lastIndexOf('}')
+    if (e !== -1) clean = clean.slice(0, e + 1)
 
+    // First attempt: parse as-is
     try {
       const result = JSON.parse(clean)
       return NextResponse.json({ ok: true, result, screenshotUrl: screenshotUrl ?? '' })
-    } catch (parseErr) {
-      const msg = parseErr instanceof Error ? parseErr.message : String(parseErr)
-      return NextResponse.json({ error: `Parse failed: ${msg}` }, { status: 500 })
+    } catch {
+      // Second attempt: repair truncated JSON by closing open brackets/braces
+      try {
+        const repaired = repairJson(clean)
+        const result = JSON.parse(repaired)
+        return NextResponse.json({ ok: true, result, screenshotUrl: screenshotUrl ?? '' })
+      } catch (parseErr) {
+        const msg = parseErr instanceof Error ? parseErr.message : String(parseErr)
+        return NextResponse.json({ error: `Parse failed: ${msg}` }, { status: 500 })
+      }
     }
 
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
     return NextResponse.json({ error: msg }, { status: 500 })
   }
+}
+
+// Close any unterminated strings, arrays, or objects caused by token-limit truncation
+function repairJson(s: string): string {
+  const stack: string[] = []
+  let inString = false
+  let escape = false
+
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i]
+    if (escape) { escape = false; continue }
+    if (ch === '\\' && inString) { escape = true; continue }
+    if (ch === '"') { inString = !inString; continue }
+    if (inString) continue
+    if (ch === '{') stack.push('}')
+    else if (ch === '[') stack.push(']')
+    else if (ch === '}' || ch === ']') stack.pop()
+  }
+
+  // If we ended mid-string, close it
+  let out = s
+  if (inString) out += '"'
+
+  // Close all open brackets/braces in reverse
+  for (let i = stack.length - 1; i >= 0; i--) out += stack[i]
+  return out
 }
