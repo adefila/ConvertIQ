@@ -33,7 +33,7 @@ interface SavedCopy { form: typeof genFormDefault; data: GeneratedCopy; conversi
 
 const TTL = 15 * 24 * 60 * 60 * 1000
 
-const genFormDefault = { projectName: '', industry: '', targetAudience: '', mainOffer: '', keyBenefits: '', tone: 'professional', primaryKeyword: '', secondaryKeywords: '' }
+const genFormDefault = { projectName: '', targetAudience: '', mainOffer: '', keyBenefits: '', tone: 'professional' }
 
 // ── Example audit for demo ────────────────────────────────────────────────
 const EXAMPLE_AUDIT: AuditResult = {
@@ -407,9 +407,8 @@ export default function Page() {
   const [activePage, setActivePage] = useState('Home')
   const [selectedOtherPage, setSelectedOtherPage] = useState('')
   const [genForm, setGenForm] = useState({
-    projectName: '', industry: '', targetAudience: '',
+    projectName: '', targetAudience: '',
     mainOffer: '', keyBenefits: '', tone: 'professional',
-    primaryKeyword: '', secondaryKeywords: '',
   })
 
   const animateSteps = useCallback((onDone: () => void) => {
@@ -724,7 +723,7 @@ export default function Page() {
             <div className={styles.brandDot} />ConvertIQ
           </div>
           <div className={styles.navRight}>
-            <button className={styles.navGenerateBtn} onClick={() => { setScreen('generate'); setGenResult(null); setGenForm({ projectName: '', industry: '', targetAudience: '', mainOffer: '', keyBenefits: '', tone: 'professional', primaryKeyword: '', secondaryKeywords: '' }); setActivePage('Home') }}>
+            <button className={styles.navGenerateBtn} onClick={() => { setScreen('generate'); setGenResult(null); setGenForm({ projectName: '', targetAudience: '', mainOffer: '', keyBenefits: '', tone: 'professional' }); setActivePage('Home') }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
               Generate Copy
             </button>
@@ -1220,15 +1219,9 @@ export default function Page() {
                       </select>
                     </div>
                   </div>
-                  <div className={styles.genRow}>
-                    <div className={styles.genField}>
-                      <label className={styles.genLabel}>Project / Brand Name <span style={{color:'var(--red)'}}>*</span></label>
-                      <input className={styles.genInput} placeholder="e.g. FlowPilot" value={genForm.projectName} onChange={e => setGenForm(f => ({ ...f, projectName: e.target.value }))} />
-                    </div>
-                    <div className={styles.genField}>
-                      <label className={styles.genLabel}>Industry</label>
-                      <input className={styles.genInput} placeholder="e.g. SaaS, Agency, E-commerce" value={genForm.industry} onChange={e => setGenForm(f => ({ ...f, industry: e.target.value }))} />
-                    </div>
+                  <div className={styles.genField}>
+                    <label className={styles.genLabel}>Project / Brand Name <span style={{color:'var(--red)'}}>*</span></label>
+                    <input className={styles.genInput} placeholder="e.g. FlowPilot" value={genForm.projectName} onChange={e => setGenForm(f => ({ ...f, projectName: e.target.value }))} />
                   </div>
                   <div className={styles.genField}>
                     <label className={styles.genLabel}>Target Audience</label>
@@ -1241,16 +1234,6 @@ export default function Page() {
                   <div className={styles.genField}>
                     <label className={styles.genLabel}>Key Benefits / Differentiators</label>
                     <textarea className={styles.genTa} placeholder="List 3-5 specific outcomes or benefits&#10;e.g. Automate workflows without coding&#10;Save 15+ hours per week&#10;No technical skills required" value={genForm.keyBenefits} onChange={e => setGenForm(f => ({ ...f, keyBenefits: e.target.value }))} />
-                  </div>
-                  <div className={styles.genRow}>
-                    <div className={styles.genField}>
-                      <label className={styles.genLabel}>Primary SEO Keyword</label>
-                      <input className={styles.genInput} placeholder="e.g. AI workflow automation" value={genForm.primaryKeyword} onChange={e => setGenForm(f => ({ ...f, primaryKeyword: e.target.value }))} />
-                    </div>
-                    <div className={styles.genField}>
-                      <label className={styles.genLabel}>Secondary Keywords</label>
-                      <input className={styles.genInput} placeholder="e.g. team productivity, no-code automation" value={genForm.secondaryKeywords} onChange={e => setGenForm(f => ({ ...f, secondaryKeywords: e.target.value }))} />
-                    </div>
                   </div>
                   <div className={styles.genField}>
                     <label className={styles.genLabel}>Tone of Voice</label>
