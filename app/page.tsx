@@ -197,6 +197,14 @@ function scoreColor(v: number) {
   return v >= 70 ? 'var(--green)' : v >= 50 ? 'var(--amber)' : 'var(--red)'
 }
 
+function scoreLetter(v: number) {
+  return v >= 80 ? 'A' : v >= 65 ? 'B' : v >= 50 ? 'C' : v >= 35 ? 'D' : 'F'
+}
+
+function overallFromScores(s: AuditScores) {
+  return Math.round((s.conversion + s.ux + s.cta + s.trust + s.mobile) / 5)
+}
+
 const ICON_PATHS: Record<string, string> = {
   chart: 'M22 12h-4l-3 9L9 3l-3 9H2',
   shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
@@ -299,7 +307,7 @@ function IssueRow({ issue }: { issue: Issue }) {
 function SectionCard({ section, defaultOpen }: { section: PageSection; defaultOpen: boolean }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
-    <div className={`${styles.sectionCard} ${open ? styles.sectionOpen : ''}`}>
+    <div className={`${styles.sectionCard} ${open ? styles.sectionOpen : ''}`} style={{ borderLeftColor: scoreColor(section.score), borderLeftWidth: 3 }}>
       <div className={styles.sectionHead} onClick={() => setOpen(o => !o)}>
         <div className={styles.sectionNameTag}>
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -698,6 +706,8 @@ export default function Page() {
     return acc
   }, {})
 
+  const overallScore = result ? overallFromScores(result.scores) : 0
+
   // Compare tab data
   const compareScoreWins = compareResult ? SCORE_KEYS.map(([k]) => {
     const myScore = result?.scores[k] ?? 0
@@ -756,7 +766,7 @@ export default function Page() {
                 onKeyDown={e => { if (e.key === 'Enter') runAudit() }}
                 autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false}
               />
-              <button className={styles.btnPrimary} onClick={runAudit}>
+              <button className={`${styles.btnPrimary} ${styles.btnAccent}`} onClick={runAudit}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
@@ -846,7 +856,15 @@ export default function Page() {
           <div className={styles.resTop}>
             <div className={styles.resTopInner}>
               <div>
-                <div className={styles.resHeading}>{compareResult ? 'Comparison Report' : 'Audit Report'}</div>
+                <div className={styles.resHeadingRow}>
+                  <div className={styles.resHeading}>{compareResult ? 'Comparison Report' : 'Audit Report'}</div>
+                  {!compareResult && result && (
+                    <div className={styles.overallPill} style={{ color: scoreColor(overallScore), borderColor: scoreColor(overallScore) }}>
+                      <span className={styles.overallNum}>{overallScore}</span>
+                      <span className={styles.overallLabel}>/100 · {scoreLetter(overallScore)}</span>
+                    </div>
+                  )}
+                </div>
                 <div className={styles.resMeta}>
                   <div className={styles.urlPill}><div className={styles.pillDot} />{displayUrl}</div>
                   {compareResult && <><span className={styles.vsLabel}>vs</span><div className={styles.urlPill}><div className={styles.pillDot} style={{ background: 'var(--blue)' }} />{compareDisplayUrl}</div></>}
@@ -893,12 +911,23 @@ export default function Page() {
           <div className={styles.scoreStrip}>
             <div className={styles.scoreStripInner}>
               <div className={styles.scoreGrid}>
+                {/* Overall score tile */}
+                {!compareResult && (
+                  <div className={styles.scOverall} style={{ animationDelay: '0s', borderColor: scoreColor(overallScore) }}>
+                    <div className={styles.scLbl}>Overall</div>
+                    <div className={styles.scNum} style={{ color: scoreColor(overallScore) }}>
+                      {overallScore}<span className={styles.scDenom}>/100</span>
+                    </div>
+                    <div className={styles.scGrade} style={{ color: scoreColor(overallScore) }}>{scoreLetter(overallScore)}</div>
+                    <div className={styles.scBar}><div className={styles.scFill} style={{ width: overallScore + '%', background: scoreColor(overallScore) }} /></div>
+                  </div>
+                )}
                 {SCORE_KEYS.map(([k, l], i) => {
                   const v = Math.round(result.scores[k] as number)
                   const c = scoreColor(v)
                   const cv = compareResult ? Math.round(compareResult.scores[k] as number) : null
                   return (
-                    <div key={k} className={styles.sc} style={{ animationDelay: `${i * 0.05}s` }}>
+                    <div key={k} className={styles.sc} style={{ animationDelay: `${(i + 1) * 0.05}s` }}>
                       <div className={styles.scLbl}>{l}</div>
                       <div className={styles.scNum} style={{ color: c }}>{v}<span className={styles.scDenom}>/100</span></div>
                       {cv !== null && (
@@ -906,7 +935,7 @@ export default function Page() {
                           {v >= cv ? '▲' : '▼'} vs {cv}
                         </div>
                       )}
-                      {!cv && <div className={styles.scNote}>{result.score_notes[k] ?? ''}</div>}
+                      {!cv && <div className={styles.scNote}>{(result.score_notes[k] ?? '').slice(0, 48)}{(result.score_notes[k] ?? '').length > 48 ? '…' : ''}</div>}
                       <div className={styles.scBar}><div className={styles.scFill} style={{ width: v + '%', background: c }} /></div>
                     </div>
                   )
@@ -929,7 +958,7 @@ export default function Page() {
                 ['sections', 'Sections', result.sections?.length],
                 ['copy', 'Copy Rewriter', sectionCopyItems.length || null],
                 ['recs', 'Recommendations', null],
-                ['layout', 'Layout Blueprint', null],
+                ['layout', 'Layout', null],
               ].filter(Boolean) as [string, string, number | null][]).map(([id, label, count]) => (
                 <button key={id} className={`${styles.tabBtn} ${tab === id ? styles.tabOn : ''}`} onClick={() => setTab(id)}>
                   {label}{count != null && <span className={styles.tabBadge}>{count}</span>}
